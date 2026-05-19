@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="bn" class="light">
+<html lang="en" class="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, visual-viewport-fit=cover">
-    <title>Stockify Pro - Premium Inventory Solution</title>
+    <title>Stockify Pro - Smart Inventory</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
@@ -19,11 +19,7 @@
             darkMode: 'class',
             theme: {
                 extend: {
-                    colors: {
-                        primary: '#10b981',
-                        secondary: '#3b82f6',
-                        darkBg: '#0f172a',
-                    },
+                    colors: { primary: '#10b981', secondary: '#3b82f6', darkBg: '#0f172a' },
                     fontFamily: { sans: ['Hind Siliguri', 'sans-serif'] },
                 }
             }
@@ -49,24 +45,27 @@
                 <div class="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg">
                     <i data-lucide="package" class="w-6 h-6"></i>
                 </div>
-                <span class="text-2xl font-black tracking-tight text-primary">Stockify</span>
+                <span class="text-2xl font-black tracking-tight text-primary uppercase">Stockify</span>
             </div>
             <nav class="space-y-2">
                 <button onclick="switchPage('dashboard')" id="nav-dashboard" class="nav-btn active-nav w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all">
-                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i> ড্যাশবোর্ড
+                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i> Dashboard
                 </button>
                 <button onclick="switchPage('products')" id="nav-products" class="nav-btn w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-sm font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700/50">
-                    <i data-lucide="shopping-cart" class="w-5 h-5"></i> পণ্য তালিকা
+                    <i data-lucide="shopping-cart" class="w-5 h-5"></i> Products
                 </button>
                 <button onclick="switchPage('scanner')" id="nav-scanner" class="nav-btn w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-sm font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700/50">
-                    <i data-lucide="scan-barcode" class="w-5 h-5"></i> বারকোড স্ক্যানার
+                    <i data-lucide="scan-barcode" class="w-5 h-5"></i> Scanner
+                </button>
+                <button onclick="switchPage('settings')" id="nav-settings" class="nav-btn w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-sm font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700/50">
+                    <i data-lucide="settings" class="w-5 h-5"></i> Settings
                 </button>
             </nav>
         </div>
         <button onclick="toggleTheme()" class="w-full h-12 rounded-2xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center gap-2 font-bold text-sm">
             <i data-lucide="moon" class="w-5 h-5 dark:hidden"></i>
             <i data-lucide="sun" class="w-5 h-5 hidden dark:block text-amber-400"></i>
-            থিম পরিবর্তন
+            Change Theme
         </button>
     </aside>
 
@@ -78,7 +77,7 @@
                 <i data-lucide="scan-line" class="w-7 h-7"></i>
             </button>
         </div>
-        <button onclick="switchPage('settings')" class="mobile-nav-btn text-slate-400"><i data-lucide="settings" class="w-6 h-6"></i></button>
+        <button onclick="switchPage('settings')" class="mobile-nav-btn text-slate-400" data-page="settings"><i data-lucide="settings" class="w-6 h-6"></i></button>
         <button onclick="toggleTheme()" class="text-slate-400"><i data-lucide="moon" class="w-6 h-6"></i></button>
     </nav>
 
@@ -86,25 +85,25 @@
         
         <section id="page-dashboard" class="page-view space-y-8">
             <header>
-                <h1 class="text-3xl font-black">ওভারভিউ</h1>
-                <p class="text-slate-500">স্টকের বর্তমান অবস্থা এখানে দেখুন।</p>
+                <h1 class="text-3xl font-black">Overview</h1>
+                <p class="text-slate-500">Stock health and summary.</p>
             </header>
             <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 <div class="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
                     <div class="flex justify-between items-center">
-                        <div><p class="text-xs font-black text-slate-400 uppercase">মোট প্রোডাক্ট</p><h3 id="dash-total" class="text-3xl font-black mt-1">0</h3></div>
+                        <div><p class="text-xs font-black text-slate-400 uppercase">Total Products</p><h3 id="dash-total" class="text-3xl font-black mt-1">0</h3></div>
                         <div class="p-4 bg-emerald-500/10 text-emerald-500 rounded-2xl"><i data-lucide="package" class="w-8 h-8"></i></div>
                     </div>
                 </div>
                 <div class="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
                     <div class="flex justify-between items-center">
-                        <div><p class="text-xs font-black text-slate-400 uppercase">মেয়াদ উত্তীর্ণ</p><h3 id="dash-expired" class="text-3xl font-black mt-1 text-red-500">0</h3></div>
+                        <div><p class="text-xs font-black text-slate-400 uppercase">Expired Soon</p><h3 id="dash-expired" class="text-3xl font-black mt-1 text-red-500">0</h3></div>
                         <div class="p-4 bg-red-500/10 text-red-500 rounded-2xl"><i data-lucide="alert-triangle" class="w-8 h-8"></i></div>
                     </div>
                 </div>
                 <div class="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm sm:col-span-2 lg:col-span-1">
                     <div class="flex justify-between items-center">
-                        <div><p class="text-xs font-black text-slate-400 uppercase">মোট স্টক (পিস)</p><h3 id="dash-pieces" class="text-3xl font-black mt-1 text-blue-500">0</h3></div>
+                        <div><p class="text-xs font-black text-slate-400 uppercase">Total Stock (Pcs)</p><h3 id="dash-pieces" class="text-3xl font-black mt-1 text-blue-500">0</h3></div>
                         <div class="p-4 bg-blue-500/10 text-blue-500 rounded-2xl"><i data-lucide="layers" class="w-8 h-8"></i></div>
                     </div>
                 </div>
@@ -114,65 +113,60 @@
         <section id="page-products" class="page-view space-y-8 hidden">
             <div id="products-list-view" class="space-y-6">
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <h1 class="text-3xl font-black">পণ্য তালিকা</h1>
-                    <button onclick="openAddProductForm()" class="bg-primary hover:bg-emerald-600 text-white font-black px-6 py-3.5 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-95">
-                        <i data-lucide="plus-circle" class="w-5 h-5"></i> নতুন পণ্য
+                    <h1 class="text-3xl font-black text-primary">Product List</h1>
+                    <button onclick="openAddProductForm()" class="bg-primary hover:bg-emerald-600 text-white font-black px-6 py-3.5 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-primary/20">
+                        <i data-lucide="plus-circle" class="w-5 h-5"></i> Add Product
                     </button>
                 </div>
-
                 <div class="relative group">
                     <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400"></i>
-                    <input id="search-input" type="text" placeholder="নাম বা বারকোড দিয়ে খুঁজুন..." class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl pl-12 pr-4 py-4 outline-none focus:ring-4 focus:ring-primary/10 transition-all">
+                    <input id="search-input" type="text" placeholder="Search by name or barcode..." class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl pl-12 pr-4 py-4 outline-none focus:ring-4 focus:ring-primary/10 transition-all">
                 </div>
-
-                <div id="product-grid" class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    </div>
+                <div id="product-grid" class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"></div>
             </div>
 
             <div id="products-form-view" class="max-w-2xl mx-auto hidden">
                 <div class="flex items-center gap-4 mb-8">
                     <button onclick="closeProductForm()" class="w-12 h-12 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center"><i data-lucide="chevron-left"></i></button>
-                    <h1 id="form-title" class="text-2xl font-black">পণ্য এন্ট্রি ফরম</h1>
+                    <h1 id="form-title" class="text-2xl font-black">Entry Form</h1>
                 </div>
-                
                 <div class="bg-white dark:bg-slate-800 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-700 shadow-xl">
                     <form id="product-form" class="space-y-6">
                         <input type="hidden" id="form-id">
-                        
-                        <div class="relative group">
+                        <div class="relative">
                             <div id="image-preview-box" class="hidden relative aspect-video rounded-3xl overflow-hidden border-2 border-slate-100 dark:border-slate-700">
                                 <img id="form-img-output" src="" class="w-full h-full object-cover">
                                 <button type="button" onclick="removeFormImage()" class="absolute top-4 right-4 w-10 h-10 bg-red-500 text-white rounded-full flex items-center justify-center"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
                             </div>
                             <label id="image-input-label" class="flex flex-col items-center justify-center aspect-video rounded-3xl border-2 border-dashed border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/50 cursor-pointer hover:border-primary transition-all">
                                 <i data-lucide="image-plus" class="w-10 h-10 text-primary mb-2"></i>
-                                <span class="font-bold text-slate-500">পণ্যের ছবি যুক্ত করুন</span>
+                                <span class="font-bold text-slate-500">Upload Product Image</span>
                                 <input type="file" id="form-image-input" accept="image/*" class="hidden">
                             </label>
                         </div>
-
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div class="md:col-span-2"><label class="text-xs font-black text-slate-400 uppercase ml-1">পণ্যের নাম</label><input type="text" id="form-name" required class="w-full px-5 py-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl font-bold"></div>
-                            <div><label class="text-xs font-black text-slate-400 uppercase ml-1">বারকোড / SKU</label><input type="text" id="form-sku" required class="w-full px-5 py-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl font-mono font-bold"></div>
-                            <div><label class="text-xs font-black text-slate-400 uppercase ml-1">ক্যাটাগরি</label>
+                            <div class="md:col-span-2"><label class="text-xs font-black text-slate-400 uppercase">Product Name</label><input type="text" id="form-name" required class="w-full px-5 py-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl font-bold"></div>
+                            <div><label class="text-xs font-black text-slate-400 uppercase">Barcode / SKU</label><input type="text" id="form-sku" required class="w-full px-5 py-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl font-mono font-bold"></div>
+                            <div><label class="text-xs font-black text-slate-400 uppercase">Category</label>
                                 <select id="form-category" class="w-full px-5 py-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl font-bold">
-                                    <option value="Grains">Grains (শস্য)</option>
-                                    <option value="Dairy">Dairy (দুগ্ধজাত)</option>
+                                    <option value="Grains">Grains (চাল/ডাল)</option>
+                                    <option value="Dairy">Dairy (দুধ/দই)</option>
                                     <option value="Beverages">Beverages (পানীয়)</option>
                                     <option value="Snacks">Snacks (নাস্তা)</option>
                                     <option value="Packaged">Packaged (প্যাকেটজাত)</option>
+                                    <option value="Toiletries">Toiletries (সাবান/শ্যাম্পু)</option>
                                 </select>
                             </div>
                             <div class="md:col-span-2 grid grid-cols-3 gap-4 bg-slate-50 dark:bg-slate-900/50 p-5 rounded-3xl border border-slate-100 dark:border-slate-700 text-center">
-                                <div><p class="text-[10px] font-black text-slate-400 uppercase">কার্টুন</p><input type="number" id="form-cartons" value="0" class="w-full bg-transparent border-none text-center text-xl font-black"></div>
-                                <div><p class="text-[10px] font-black text-slate-400 uppercase">পিস/কার্টুন</p><input type="number" id="form-pcs-per" value="1" class="w-full bg-transparent border-none text-center text-xl font-black"></div>
-                                <div><p class="text-[10px] font-black text-primary uppercase">মোট পিস</p><input type="number" id="form-total-pcs" value="0" readonly class="w-full bg-transparent border-none text-center text-xl font-black text-primary"></div>
+                                <div><p class="text-[10px] font-black text-slate-400 uppercase">Cartons</p><input type="number" id="form-cartons" value="0" class="w-full bg-transparent border-none text-center text-xl font-black"></div>
+                                <div><p class="text-[10px] font-black text-slate-400 uppercase">Pcs/Carton</p><input type="number" id="form-pcs-per" value="1" class="w-full bg-transparent border-none text-center text-xl font-black"></div>
+                                <div><p class="text-[10px] font-black text-primary uppercase">Total Pieces</p><input type="number" id="form-total-pcs" value="0" readonly class="w-full bg-transparent border-none text-center text-xl font-black text-primary"></div>
                             </div>
-                            <div><label class="text-xs font-black text-emerald-600 uppercase ml-1">কার্টুন প্রাইজ</label><input type="number" step="0.01" id="form-carton-price" value="0" class="w-full px-5 py-4 bg-emerald-50 dark:bg-emerald-500/5 border border-emerald-100 dark:border-emerald-500/20 rounded-2xl font-bold"></div>
-                            <div><label class="text-xs font-black text-blue-600 uppercase ml-1">খুচরা প্রাইজ (পিস)</label><input type="number" step="0.01" id="form-piece-price" value="0" class="w-full px-5 py-4 bg-blue-50 dark:bg-blue-500/5 border border-blue-100 dark:border-blue-500/20 rounded-2xl font-bold"></div>
-                            <div class="md:col-span-2"><label class="text-xs font-black text-red-500 uppercase ml-1">মেয়াদ উত্তীর্ণের তারিখ</label><input type="date" id="form-expiry" required class="w-full px-5 py-4 bg-red-50/30 dark:bg-red-500/5 border border-red-100 dark:border-red-500/20 rounded-2xl font-bold"></div>
+                            <div><label class="text-xs font-black text-emerald-600 uppercase">Carton Price</label><input type="number" step="0.01" id="form-carton-price" value="0" class="w-full px-5 py-4 bg-emerald-50 dark:bg-emerald-500/5 border border-emerald-100 dark:border-emerald-500/20 rounded-2xl font-bold"></div>
+                            <div><label class="text-xs font-black text-blue-600 uppercase">Piece Price</label><input type="number" step="0.01" id="form-piece-price" value="0" class="w-full px-5 py-4 bg-blue-50 dark:bg-blue-500/5 border border-blue-100 dark:border-blue-500/20 rounded-2xl font-bold"></div>
+                            <div class="md:col-span-2"><label class="text-xs font-black text-red-500 uppercase">Expiry Date</label><input type="date" id="form-expiry" required class="w-full px-5 py-4 bg-red-50/30 dark:bg-red-500/5 border border-red-100 dark:border-red-500/20 rounded-2xl font-bold"></div>
                         </div>
-                        <button type="submit" class="w-full bg-primary text-white font-black py-5 rounded-3xl shadow-xl shadow-primary/20 hover:bg-emerald-600 transition-all active:scale-95">ডেটা সেভ করুন</button>
+                        <button type="submit" id="save-btn" class="w-full bg-primary text-white font-black py-5 rounded-3xl shadow-xl shadow-primary/20 hover:bg-emerald-600 transition-all active:scale-95">Save Data</button>
                     </form>
                 </div>
             </div>
@@ -180,12 +174,45 @@
 
         <section id="page-scanner" class="page-view space-y-8 hidden">
             <div class="max-w-lg mx-auto text-center space-y-6">
-                <h1 class="text-3xl font-black">স্ক্যানার</h1>
+                <h1 class="text-3xl font-black">Barcode Scanner</h1>
                 <div class="relative aspect-square bg-slate-900 rounded-[3rem] overflow-hidden border-8 border-white dark:border-slate-800 shadow-2xl">
                     <div id="scanner-container" class="w-full h-full object-cover"></div>
-                    <div class="absolute inset-0 border-2 border-primary/30 rounded-[2.5rem] pointer-events-none"></div>
                 </div>
-                <button onclick="switchPage('dashboard')" class="bg-white dark:bg-slate-800 px-8 py-4 rounded-2xl font-bold border border-slate-200 dark:border-slate-700 shadow-sm">বন্ধ করুন</button>
+                <button onclick="switchPage('dashboard')" class="bg-white dark:bg-slate-800 px-8 py-4 rounded-2xl font-bold border border-slate-200 dark:border-slate-700 shadow-sm">Close Scanner</button>
+            </div>
+        </section>
+
+        <section id="page-settings" class="page-view space-y-8 hidden">
+            <h1 class="text-3xl font-black">Settings</h1>
+            <div class="grid gap-6">
+                <div class="bg-white dark:bg-slate-800 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-700 shadow-sm">
+                    <h2 class="text-xl font-black mb-6 flex items-center gap-2"><i data-lucide="user"></i> Developer Profile</h2>
+                    <div class="flex items-center gap-5">
+                        <div class="w-20 h-20 bg-primary/10 text-primary rounded-3xl flex items-center justify-center font-black text-3xl">SA</div>
+                        <div>
+                            <h3 class="text-xl font-black">Sabbir Hosen Akash</h3>
+                            <p class="text-slate-500">Musician & Cyber Security Enthusiast</p>
+                            <p class="text-xs font-bold text-primary mt-1">Saudi Arabia Office</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white dark:bg-slate-800 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-700 shadow-sm">
+                    <h2 class="text-xl font-black mb-6 flex items-center gap-2"><i data-lucide="shield-check"></i> System Status</h2>
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl">
+                            <span class="font-bold">Hosting</span>
+                            <span class="text-emerald-500 font-bold">Meetwoyou Cloud (Active)</span>
+                        </div>
+                        <div class="flex justify-between items-center p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl">
+                            <span class="font-bold">Offline Support</span>
+                            <span class="text-blue-500 font-bold">Enabled (Background Sync)</span>
+                        </div>
+                        <div class="flex justify-between items-center p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl">
+                            <span class="font-bold">Image Compression</span>
+                            <span class="text-amber-500 font-bold">Active (Fast Upload)</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -195,22 +222,14 @@
         window.switchPage = (pageId) => {
             document.querySelectorAll('.page-view').forEach(p => p.classList.add('hidden'));
             document.getElementById(`page-${pageId}`).classList.remove('hidden');
-            
             document.querySelectorAll('.nav-btn, .mobile-nav-btn').forEach(btn => {
                 btn.classList.remove('active-nav', 'text-primary');
                 btn.classList.add('text-slate-500', 'text-slate-400');
             });
-            
-            const dBtn = document.getElementById(`nav-${pageId}`);
-            if(dBtn) dBtn.classList.add('active-nav');
-            
-            const mBtn = document.querySelector(`.mobile-nav-btn[data-page="${pageId}"]`);
-            if(mBtn) mBtn.classList.add('text-primary');
-
-            // Trigger app.js scanner functions if needed
+            const dBtn = document.getElementById(`nav-${pageId}`); if(dBtn) dBtn.classList.add('active-nav');
+            const mBtn = document.querySelector(`.mobile-nav-btn[data-page="${pageId}"]`); if(mBtn) mBtn.classList.add('text-primary');
             if(pageId === 'scanner') { if(window.startScanner) window.startScanner(); }
             else { if(window.stopScanner) window.stopScanner(); }
-
             lucide.createIcons();
         }
 
@@ -218,12 +237,12 @@
             document.documentElement.classList.toggle('dark');
             localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
         }
-
         if (localStorage.getItem('theme') === 'dark') document.documentElement.classList.add('dark');
 
         window.openAddProductForm = () => {
             document.getElementById('products-list-view').classList.add('hidden');
             document.getElementById('products-form-view').classList.remove('hidden');
+            document.getElementById('form-title').innerText = "Add New Product";
         }
 
         window.closeProductForm = () => {
@@ -239,10 +258,8 @@
             document.getElementById('image-preview-box').classList.add('hidden');
             document.getElementById('image-input-label').classList.remove('hidden');
         }
-
         lucide.createIcons();
     </script>
-
     <script type="module" src="app.js"></script>
 </body>
 </html>
