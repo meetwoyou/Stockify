@@ -1,71 +1,42 @@
-// === INDEXEDDB DATABASE LAYER ===
-const DB_NAME = 'StockifyDB';
-const DB_VERSION = 1;
-const STORE_NAME = 'products';
+// === FIREBASE SETUP ENGINE (ES MODULES) ===
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { 
+    getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc 
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { 
+    getStorage, ref, uploadBytes, getDownloadURL, deleteObject 
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
-let db;
-function initDB() {
-    return new Promise((resolve, reject) => {
-        const request = indexedDB.open(DB_NAME, DB_VERSION);
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => { db = request.result; resolve(db); };
-        request.onupgradeneeded = (e) => {
-            const database = e.target.result;
-            if (!database.objectStoreNames.contains(STORE_NAME)) {
-                database.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
-            }
-        };
-    });
-}
+// Firebase App Configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyBl_CcAlhQC04DiWKrjtaJDJejcBofE-Q8",
+  authDomain: "stockify-cffcc.firebaseapp.com",
+  projectId: "stockify-cffcc",
+  storageBucket: "stockify-cffcc.firebasestorage.app",
+  messagingSenderId: "733602526131",
+  appId: "1:733602526131:web:ed529d1ff01b2ddee091c6",
+  measurementId: "G-F1FJS6Z7CQ"
+};
 
-function getAllProducts() {
-    return new Promise((resolve) => {
-        const transaction = db.transaction(STORE_NAME, 'readonly');
-        const store = transaction.objectStore(STORE_NAME);
-        const request = store.getAll();
-        request.onsuccess = () => resolve(request.result);
-    });
-}
+// Initialize Core Engines
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const storage = getStorage(app);
 
-function addProduct(product) {
-    return new Promise((resolve) => {
-        const transaction = db.transaction(STORE_NAME, 'readwrite');
-        const store = transaction.objectStore(STORE_NAME);
-        const request = store.add(product);
-        request.onsuccess = () => resolve(request.result);
-    });
-}
-
-function updateProduct(product) {
-    return new Promise((resolve) => {
-        const transaction = db.transaction(STORE_NAME, 'readwrite');
-        const store = transaction.objectStore(STORE_NAME);
-        const request = store.put(product);
-        request.onsuccess = () => resolve();
-    });
-}
-
-function deleteProduct(id) {
-    return new Promise((resolve) => {
-        const transaction = db.transaction(STORE_NAME, 'readwrite');
-        const store = transaction.objectStore(STORE_NAME);
-        const request = store.delete(id);
-        request.onsuccess = () => resolve();
-    });
-}
-
-// === STATE MANAGEMENT ===
+// === APP GLOBAL STATE ===
 let localProducts = [];
-let currentCategory = 'All'; // 'All', 'Expired', বা নির্দিষ্ট ক্যাটাগরি ধারণ করবে
+let currentCategory = 'All';
 let scannerInstance = null;
 let isTorchOn = false;
+let selectedFileBlob = null; // নতুন কোনো ইমেজ আপলোড ট্র্যাকিংয়ের জন্য
 
-// === ROUTING SYSTEM ===
+// === INTERFACE ROUTING ENGINE ===
 function switchPage(pageId) {
     document.querySelectorAll('.page-view').forEach(p => p.classList.add('hidden'));
-    document.getElementById(`page-${pageId}`).classList.remove('hidden');
+    const targetedPage = document.getElementById(`page-${pageId}`);
+    if (targetedPage) targetedPage.classList.remove('hidden');
 
-    // Update active states for desktop sidebar
+    // Desktop Nav Active State UI update
     document.querySelectorAll('.nav-btn').forEach(btn => {
         if(btn.getAttribute('data-page') === pageId) {
             btn.className = "nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium bg-green-600 text-white shadow-md shadow-green-600/10";
@@ -74,7 +45,7 @@ function switchPage(pageId) {
         }
     });
 
-    // Update active states for mobile menu navigation
+    // Mobile Bottom Navigation UI Update
     document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
         if(btn.getAttribute('data-page') === pageId) {
             btn.classList.replace('text-slate-400', 'text-green-600');
@@ -83,19 +54,37 @@ function switchPage(pageId) {
         }
     });
 
-    // Scanner Initialization Control
+    // Camera State Controller
     if (pageId === 'scanner') {
         startScannerEngine();
     } else {
         stopScannerEngine();
     }
-
-    if (pageId === 'dashboard' || pageId === 'products') {
-        syncData();
-    }
 }
 
-// === AUDIO FEEDBACK ===
+// === EXPOSE CONTROLLERS TO HTML CONTEXT (Window Interface Binding) ===
+window.switchPage = switchPage;
+window.toggleTheme = () => {
+    const isDark = document.documentElement.classList.toggle('dark');
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+};
+window.openAddProductForm = openAddProductForm;
+window.closeProductForm = closeProductForm;
+window.editProductTrigger = editProductTrigger;
+window.deleteProductTrigger = deleteProductTrigger;
+window.viewDetailsSheet = viewDetailsSheet;
+window.closeDetailsSheet = closeDetailsSheet;
+window.setCategoryFilter = (c) => {
+    currentCategory = c;
+    renderCategoryFilters();
+    renderProducts();
+};
+window.showExpiredProductsTrigger = () => {
+    currentCategory = 'Expired';
+    switchPage('products');
+};
+
+// === AUDIO ALERTS ===
 function playBeep() {
     try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -108,21 +97,14 @@ function playBeep() {
     } catch (e) {}
 }
 
-// === THEME SYSTEM ===
-function toggleTheme() {
-    const isDark = document.documentElement.classList.toggle('dark');
-    localStorage.setItem('theme', isDark ? 'dark' : 'light');
-}
-
-// === SMART FORMS & CALCULATORS ===
-let base64ImageStr = "";
-function handleFormImage(input) {
-    const file = input.files[0];
+// === IMAGE MANIPULATION ENGINE ===
+function handleFormImage(e) {
+    const file = e.target.files[0];
     if (file) {
+        selectedFileBlob = file; // স্টোরেজে আপলোডের জন্য ফাইল অবজেক্ট স্টোর করা হল
         const reader = new FileReader();
         reader.onloadend = () => {
-            base64ImageStr = reader.result;
-            document.getElementById('form-img-output').src = base64ImageStr;
+            document.getElementById('form-img-output').src = reader.result;
             document.getElementById('image-preview-box').classList.remove('hidden');
             document.getElementById('image-input-label').classList.add('hidden');
         };
@@ -130,6 +112,15 @@ function handleFormImage(input) {
     }
 }
 
+function removeFormImage() {
+    selectedFileBlob = null;
+    document.getElementById('form-image-input').value = "";
+    document.getElementById('form-img-output').src = "";
+    document.getElementById('image-preview-box').classList.add('hidden');
+    document.getElementById('image-input-label').classList.remove('hidden');
+}
+
+// === DYNAMIC FORMS METRICS SYSTEM ===
 function calculatePrices(source) {
     const pcsPerCarton = parseInt(document.getElementById('form-pcs-per').value) || 1;
     const cartonPriceField = document.getElementById('form-carton-price');
@@ -142,12 +133,6 @@ function calculatePrices(source) {
         const piecePrice = parseFloat(piecePriceField.value) || 0;
         cartonPriceField.value = (piecePrice * pcsPerCarton).toFixed(2);
     }
-}
-
-function removeFormImage() {
-    base64ImageStr = "";
-    document.getElementById('image-preview-box').classList.add('hidden');
-    document.getElementById('image-input-label').classList.remove('hidden');
 }
 
 function calculateTotalPieces() {
@@ -174,35 +159,68 @@ function closeProductForm() {
     document.getElementById('products-list-view').classList.remove('hidden');
 }
 
+// === FIREBASE DATABASE (CRUD) ACTIONS ===
 async function saveProduct(e) {
     e.preventDefault();
     const id = document.getElementById('form-id').value;
-    const payload = {
-        name: document.getElementById('form-name').value,
-        sku: document.getElementById('form-sku').value,
-        category: document.getElementById('form-category').value,
-        cartons: parseInt(document.getElementById('form-cartons').value) || 0,
-        piecesPerCarton: parseInt(document.getElementById('form-pcs-per').value) || 0,
-        totalPieces: parseInt(document.getElementById('form-total-pcs').value) || 0,
-        cartonPrice: parseFloat(document.getElementById('form-carton-price').value) || 0,
-        piecePrice: parseFloat(document.getElementById('form-piece-price').value) || 0,
-        expiryDate: document.getElementById('form-expiry').value,
-        image: base64ImageStr
-    };
+    
+    // UI লোডিং ফিডব্যাক
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const initialBtnText = submitBtn.innerText;
+    submitBtn.innerText = "Processing, Please Wait...";
+    submitBtn.disabled = true;
 
-    if (id) {
-        payload.id = parseInt(id);
-        await updateProduct(payload);
-    } else {
-        await addProduct(payload);
+    try {
+        let finalImageUrl = "";
+
+        // ১. যদি নতুন কোনো ছবি সিলেক্ট করা থাকে তবে তা Firebase Storage এ আপলোড করা হবে
+        if (selectedFileBlob) {
+            const fileName = `products/${Date.now()}_${selectedFileBlob.name}`;
+            const fileRef = ref(storage, fileName);
+            const uploadSnapshot = await uploadBytes(fileRef, selectedFileBlob);
+            finalImageUrl = await getDownloadURL(uploadSnapshot.ref);
+        } else if (id) {
+            // যদি এডিট মোড হয় এবং নতুন ছবি না দেওয়া হয়, তবে আগের ছবিটাই বহাল থাকবে
+            const existingProduct = localProducts.find(item => item.id === id);
+            if (existingProduct) finalImageUrl = existingProduct.image || "";
+        }
+
+        const payload = {
+            name: document.getElementById('form-name').value,
+            sku: document.getElementById('form-sku').value,
+            category: document.getElementById('form-category').value,
+            cartons: parseInt(document.getElementById('form-cartons').value) || 0,
+            piecesPerCarton: parseInt(document.getElementById('form-pcs-per').value) || 0,
+            totalPieces: parseInt(document.getElementById('form-total-pcs').value) || 0,
+            cartonPrice: parseFloat(document.getElementById('form-carton-price').value) || 0,
+            piecePrice: parseFloat(document.getElementById('form-piece-price').value) || 0,
+            expiryDate: document.getElementById('form-expiry').value,
+            image: finalImageUrl
+        };
+
+        if (id) {
+            // Firestore Update
+            const docRef = doc(db, 'products', id);
+            await updateDoc(docRef, payload);
+        } else {
+            // Firestore Create
+            await addDoc(collection(db, 'products'), payload);
+        }
+
+        closeProductForm();
+    } catch (error) {
+        console.error("Error saving data to Firebase:", error);
+        alert("ফায়ারবেজে ডেটা সেভ করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।");
+    } finally {
+        submitBtn.innerText = initialBtnText;
+        submitBtn.disabled = false;
     }
-    closeProductForm();
-    syncData();
 }
 
 function editProductTrigger(id) {
     const p = localProducts.find(item => item.id === id);
     if (!p) return;
+    
     openAddProductForm();
     document.getElementById('form-title').innerText = 'Modify Registry';
     document.getElementById('form-id').value = p.id;
@@ -215,8 +233,8 @@ function editProductTrigger(id) {
     document.getElementById('form-carton-price').value = p.cartonPrice || 0;
     document.getElementById('form-piece-price').value = p.piecePrice || 0;
     document.getElementById('form-expiry').value = p.expiryDate;
+    
     if (p.image) {
-        base64ImageStr = p.image;
         document.getElementById('form-img-output').src = p.image;
         document.getElementById('image-preview-box').classList.remove('hidden');
         document.getElementById('image-input-label').classList.add('hidden');
@@ -224,17 +242,43 @@ function editProductTrigger(id) {
 }
 
 async function deleteProductTrigger(id) {
+    const p = localProducts.find(item => item.id === id);
+    if (!p) return;
+
     if(confirm('আপনি কি নিশ্চিতভাবে এই পণ্যটি ডিলিট করতে চান?')) {
-        await deleteProduct(id);
-        syncData();
+        try {
+            // ছবি যদি ফায়ারবেজ স্টোরেজে থাকে, তবে ডাটাবেজ ডকুমেন্ট ডিলিটের সাথে ছবিটাও ডিলিট করা হবে
+            if (p.image && p.image.includes("firebasestorage.googleapis.com")) {
+                const fileRef = ref(storage, p.image);
+                await deleteObject(fileRef).catch(e => console.log("Storage image removal skipped or errored:", e));
+            }
+            await deleteDoc(doc(db, 'products', id));
+        } catch (err) {
+            console.error("Deletion error:", err);
+            alert("পণ্যটি ডিলিট করা যায়নি।");
+        }
     }
 }
 
-// === ENGINE DATA SYNCHRONIZATION ===
-async function syncData() {
-    localProducts = await getAllProducts();
-    
-    // Calculate Dashboard metrics
+// === REALTIME FIREBASE SYNC ENGINE ===
+function initFirebaseRealtimeSync() {
+    // অন-স্ম্যাপশট মেথডটি ডাটাবেজে যেকোনো পরিবর্তনের সাথে সাথে নিজে থেকেই কল হবে (রিয়েল-টাইম)
+    onSnapshot(collection(db, 'products'), (snapshot) => {
+        localProducts = [];
+        snapshot.forEach((doc) => {
+            localProducts.push({ id: doc.id, ...doc.data() });
+        });
+        
+        // মেট্রিক্স ও ওভারভিউ আপডেট
+        updateMetrics();
+        renderCategoryFilters();
+        renderProducts();
+    }, (error) => {
+        console.error("Firebase Sync Connection Lost:", error);
+    });
+}
+
+function updateMetrics() {
     document.getElementById('dash-total').innerText = localProducts.length;
     
     let expiredCount = 0;
@@ -248,27 +292,17 @@ async function syncData() {
 
     document.getElementById('dash-expired').innerText = expiredCount;
     document.getElementById('dash-pieces').innerText = totalPcsSum;
-
-    renderCategoryFilters();
-    renderProducts();
-}
-
-// ড্যাশবোর্ডের Expired কার্ডে ক্লিক করার জন্য বিশেষ ফাংশন
-function showExpiredProductsTrigger() {
-    currentCategory = 'Expired'; // ফিল্টার স্টেট সেট করা হলো
-    switchPage('products');      // প্রোডাক্ট পেজে রাউট করা হলো
 }
 
 function renderCategoryFilters() {
     const cats = ['All', 'Grains', 'Dairy', 'Beverages', 'Snacks', 'Packaged', 'Fresh Produce'];
     const container = document.getElementById('category-filters');
+    if (!container) return;
     
-    // যদি ড্যাশবোর্ড থেকে Expired ট্রিপ করা হয়, তবে ক্যাটাগরি চিপস তৈরিতে এক্সপায়ার্ড বাটনটি একটিভ হাইলাইট পাবে
     let htmlContent = cats.map(c => `
         <button onclick="setCategoryFilter('${c}')" class="text-xs font-medium px-3 py-1.5 rounded-xl border whitespace-nowrap transition-all ${currentCategory === c ? 'bg-green-600 text-white border-green-600 shadow-sm' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 border-transparent'}">${c}</button>
     `).join('');
 
-    // যদি ডেডিকেটেড ফিল্টার 'Expired' চালু থাকে, তবে তার চিপস ফিল্টারে যুক্ত হবে
     if (currentCategory === 'Expired') {
         htmlContent = `
             <button onclick="setCategoryFilter('Expired')" class="text-xs font-medium px-3 py-1.5 rounded-xl border whitespace-nowrap transition-all bg-red-600 text-white border-red-600 shadow-sm">⚠️ Expired Items</button>
@@ -282,15 +316,12 @@ function renderCategoryFilters() {
     container.innerHTML = htmlContent;
 }
 
-function setCategoryFilter(c) {
-    currentCategory = c;
-    renderCategoryFilters();
-    renderProducts();
-}
-
 function renderProducts() {
-    const query = document.getElementById('search-input').value.toLowerCase();
+    const searchInput = document.getElementById('search-input');
+    const query = searchInput ? searchInput.value.toLowerCase() : "";
     const grid = document.getElementById('product-grid');
+    if(!grid) return;
+    
     const today = new Date();
 
     const filtered = localProducts.filter(p => {
@@ -344,9 +375,9 @@ function renderProducts() {
                         </div>
                     </div>
                     <div class="flex gap-2 border-t border-slate-100 dark:border-slate-700/50 pt-2.5">
-                        <button onclick="viewDetailsSheet(${p.id})" class="flex-1 h-8 bg-slate-50 hover:bg-slate-100 dark:bg-slate-700 dark:hover:bg-slate-600/80 rounded-lg text-xs font-medium flex items-center justify-center gap-1"><i data-lucide="eye" class="w-3.5 h-3.5"></i> View</button>
-                        <button onclick="editProductTrigger(${p.id})" class="w-8 h-8 border border-slate-200 dark:border-slate-700 rounded-lg flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-700"><i data-lucide="edit-2" class="w-3.5 h-3.5 text-slate-400"></i></button>
-                        <button onclick="deleteProductTrigger(${p.id})" class="w-8 h-8 border border-slate-200 dark:border-slate-700 rounded-lg flex items-center justify-center hover:bg-red-50 dark:hover:bg-red-950/20"><i data-lucide="trash-2" class="w-3.5 h-3.5 text-red-500"></i></button>
+                        <button onclick="viewDetailsSheet('${p.id}')" class="flex-1 h-8 bg-slate-50 hover:bg-slate-100 dark:bg-slate-700 dark:hover:bg-slate-600/80 rounded-lg text-xs font-medium flex items-center justify-center gap-1"><i data-lucide="eye" class="w-3.5 h-3.5"></i> View</button>
+                        <button onclick="editProductTrigger('${p.id}')" class="w-8 h-8 border border-slate-200 dark:border-slate-700 rounded-lg flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-700"><i data-lucide="edit-2" class="w-3.5 h-3.5 text-slate-400"></i></button>
+                        <button onclick="deleteProductTrigger('${p.id}')" class="w-8 h-8 border border-slate-200 dark:border-slate-700 rounded-lg flex items-center justify-center hover:bg-red-50 dark:hover:bg-red-950/20"><i data-lucide="trash-2" class="w-3.5 h-3.5 text-red-500"></i></button>
                     </div>
                 </div>
             </div>`;
@@ -354,7 +385,7 @@ function renderProducts() {
     lucide.createIcons();
 }
 
-// === MODAL SHEET VIEW ===
+// === DETAILS DIALOG WINDOW ===
 function viewDetailsSheet(id) {
     const p = localProducts.find(item => item.id === id);
     if (!p) return;
@@ -387,7 +418,7 @@ function closeDetailsSheet() {
     document.getElementById('details-modal').classList.replace('flex', 'hidden');
 }
 
-// === CAMERA BARCODE SCANNING ENGINE ===
+// === HARDWARE SCANNER CONTROLLER ENGINE ===
 let lastScannedText = "";
 let lastScanTime = 0;
 
@@ -420,18 +451,16 @@ function startScannerEngine() {
         config,
         (decodedText) => {
             const now = Date.now();
-            if (decodedText === lastScannedText && (now - lastScanTime) < 4000) {
-                return; 
-            }
+            if (decodedText === lastScannedText && (now - lastScanTime) < 4000) return; 
             
             lastScannedText = decodedText;
             lastScanTime = now;
             playBeep();
             handleScannedBarcode(decodedText);
         },
-        () => { /* সাইড ফ্রেম ফিল্টারিং এরর */ }
+        () => { /* Frame alignment errors filter */ }
     ).catch(err => {
-        alert("ক্যামেরা এক্সেস করা যায়নি। দয়া করে ব্রাউজারে ক্যামেরা পারমিশন চেক করুন।");
+        alert("ক্যামেরা এক্সেস করা যায়নি। পারমিশন চেক করুন।");
         console.error(err);
     });
 }
@@ -452,7 +481,7 @@ async function toggleTorch() {
             isTorchOn = !isTorchOn;
             await scannerInstance.applyVideoConstraints({ advanced: [{ torch: isTorchOn }] });
         } else {
-            alert("আপনার ডিভাইসের ব্যাক ক্যামেরা ফ্ল্যাশলাইট সাপোর্ট করে না।");
+            alert("ডিভাইস ফ্ল্যাশলাইট সাপোর্ট করে না।");
         }
     } catch (e) {}
 }
@@ -464,7 +493,7 @@ function handleScannedBarcode(code) {
             document.getElementById('scanner-main-view').classList.add('hidden');
             const container = document.getElementById('matched-card-container');
             container.innerHTML = `
-                <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-md flex items-center gap-4">
+                <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-md flex items-center gap-4 w-full">
                     ${match.image ? `<img src="${match.image}" class="w-20 h-20 rounded-xl object-cover">` : `<div class="w-20 h-20 rounded-xl bg-slate-100 flex items-center justify-center text-[10px] text-slate-400">No Img</div>`}
                     <div>
                         <h4 class="font-bold text-lg">${match.name}</h4>
@@ -482,17 +511,29 @@ function handleScannedBarcode(code) {
     });
 }
 
-function restartScanner() {
-    startScannerEngine();
-}
-
-// === LIFECYCLE INITIALIZER ===
-window.addEventListener('DOMContentLoaded', () => {
+// === DOM BINDINGS & LIFECYCLE INITIALIZER ===
+document.addEventListener('DOMContentLoaded', () => {
+    // থিম রিকভারি লজিক
     const savedTheme = localStorage.getItem('theme') || 'light';
     if (savedTheme === 'dark') document.documentElement.classList.add('dark');
     
-    initDB().then(() => {
-        syncData();
-        switchPage('dashboard');
-    });
+    // রিয়েল-টাইম ফায়ারবেস লিসেনার ট্রিপ অন
+    initFirebaseRealtimeSync();
+    switchPage('dashboard');
+
+    // ফর্ম ইভেন্ট শ্রোতা বাইন্ডিং
+    document.getElementById('product-form').addEventListener('submit', saveProduct);
+    document.getElementById('form-image-input').addEventListener('change', handleFormImage);
+    document.getElementById('remove-img-btn').addEventListener('click', removeFormImage);
+    document.getElementById('search-input').addEventListener('input', renderProducts);
+    
+    // প্রাইস ও স্টক ক্যালকুলেটর অটোমেশন
+    document.getElementById('form-cartons').addEventListener('input', () => { calculateTotalPieces(); calculatePrices('carton'); });
+    document.getElementById('form-pcs-per').addEventListener('input', () => { calculateTotalPieces(); calculatePrices('piece'); });
+    document.getElementById('form-carton-price').addEventListener('input', () => calculatePrices('carton'));
+    document.getElementById('form-piece-price').addEventListener('input', () => calculatePrices('piece'));
+
+    // স্ক্যানার বাটন অ্যাকশন ইভেন্টস
+    document.getElementById('torch-btn').addEventListener('click', toggleTorch);
+    document.getElementById('restart-scan-btn').addEventListener('click', startScannerEngine);
 });
