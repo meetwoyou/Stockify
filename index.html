@@ -2,12 +2,13 @@
 <html lang="en" class="dark">
 
 <head>
-    <meta charset="UTF-8">
+
+    <meta charset="UTF-8" />
 
     <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 
-    <title>Stockify Pro</title>
+    <title>Stockify Pro Ultra</title>
 
     <!-- TAILWIND -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -33,8 +34,8 @@
                 extend: {
                     colors: {
                         primary: "#16a34a",
-                        surface: "#0f172a",
-                        darkBg: "#020617"
+                        darkBg: "#020617",
+                        surface: "#0f172a"
                     }
                 }
             }
@@ -52,8 +53,9 @@
             background: #020617;
         }
 
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
+        .glass {
+            background: rgba(15, 23, 42, .75);
+            backdrop-filter: blur(22px);
         }
 
         .page-view {
@@ -72,15 +74,14 @@
             }
         }
 
-        .filter-chip.active {
-            background: #16a34a;
-            color: white;
-            border-color: #16a34a;
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
         }
 
-        .glass {
-            background: rgba(15, 23, 42, .75);
-            backdrop-filter: blur(20px);
+        .filter-chip.active {
+            background: #16a34a;
+            border-color: #16a34a;
+            color: white;
         }
 
         .card-hover {
@@ -88,24 +89,23 @@
         }
 
         .card-hover:hover {
-            transform: translateY(-4px);
+            transform: translateY(-5px);
         }
 
         input,
-        select {
+        select,
+        textarea {
             outline: none;
         }
 
-        .desktop-grid {
-            display: grid;
-            grid-template-columns: 320px 1fr;
-            gap: 30px;
-        }
+        @media(min-width:1200px) {
 
-        @media(max-width:1024px) {
-            .desktop-grid {
-                display: block;
+            .desktop-layout {
+                display: grid;
+                grid-template-columns: 320px 1fr;
+                gap: 30px;
             }
+
         }
     </style>
 
@@ -113,15 +113,15 @@
 
 <body class="text-white min-h-screen pb-28">
 
-    <main class="max-w-7xl mx-auto p-4 md:p-8 desktop-grid">
+    <main class="max-w-[1800px] mx-auto p-4 md:p-8 desktop-layout">
 
         <!-- SIDEBAR -->
-        <aside class="hidden lg:block">
+        <aside class="hidden xl:block">
 
             <div
                 class="glass border border-slate-800 rounded-[2.5rem] p-8 sticky top-8 shadow-2xl">
 
-                <div class="flex items-center gap-4 mb-10">
+                <div class="flex items-center gap-4 mb-12">
 
                     <div
                         class="w-16 h-16 rounded-3xl bg-primary flex items-center justify-center shadow-2xl shadow-green-900/40">
@@ -137,9 +137,9 @@
                         </h1>
 
                         <p
-                            class="text-xs uppercase tracking-[0.3em] text-slate-500 font-black mt-1">
+                            class="text-xs uppercase tracking-[0.35em] text-slate-500 font-black mt-1">
 
-                            Smart Inventory
+                            PRO ULTRA
 
                         </p>
 
@@ -150,7 +150,7 @@
                 <div class="space-y-3">
 
                     <button onclick="switchPage('dashboard')"
-                        class="nav-btn w-full flex items-center gap-4 bg-primary/10 text-primary border border-primary/20 px-5 py-5 rounded-2xl font-black uppercase text-xs"
+                        class="nav-btn w-full flex items-center gap-4 px-5 py-5 rounded-2xl bg-primary/10 border border-primary/20 text-primary font-black uppercase text-xs"
                         data-page="dashboard">
 
                         <i data-lucide="layout-grid"></i>
@@ -160,27 +160,27 @@
                     </button>
 
                     <button onclick="switchPage('products')"
-                        class="nav-btn w-full flex items-center gap-4 px-5 py-5 rounded-2xl font-black uppercase text-xs text-slate-400"
+                        class="nav-btn w-full flex items-center gap-4 px-5 py-5 rounded-2xl text-slate-400 font-black uppercase text-xs"
                         data-page="products">
 
-                        <i data-lucide="package"></i>
+                        <i data-lucide="boxes"></i>
 
                         Products
 
                     </button>
 
                     <button onclick="switchPage('scanner')"
-                        class="nav-btn w-full flex items-center gap-4 px-5 py-5 rounded-2xl font-black uppercase text-xs text-slate-400"
+                        class="nav-btn w-full flex items-center gap-4 px-5 py-5 rounded-2xl text-slate-400 font-black uppercase text-xs"
                         data-page="scanner">
 
                         <i data-lucide="scan-line"></i>
 
-                        Scanner
+                        AI Scanner
 
                     </button>
 
                     <button onclick="switchPage('settings')"
-                        class="nav-btn w-full flex items-center gap-4 px-5 py-5 rounded-2xl font-black uppercase text-xs text-slate-400"
+                        class="nav-btn w-full flex items-center gap-4 px-5 py-5 rounded-2xl text-slate-400 font-black uppercase text-xs"
                         data-page="settings">
 
                         <i data-lucide="settings-2"></i>
@@ -202,9 +202,9 @@
             <section id="page-dashboard" class="page-view">
 
                 <div
-                    class="glass border border-slate-800 rounded-[2.5rem] p-6 md:p-8 shadow-2xl">
+                    class="glass border border-slate-800 rounded-[2.8rem] p-6 md:p-8 shadow-2xl">
 
-                    <div class="flex justify-between items-center mb-8">
+                    <div class="flex flex-wrap gap-4 justify-between items-center mb-8">
 
                         <div>
 
@@ -215,16 +215,16 @@
                             <p
                                 class="text-xs uppercase tracking-[0.3em] text-slate-500 font-black mt-2">
 
-                                Smart Analytics
+                                Smart Analytics System
 
                             </p>
 
                         </div>
 
                         <button onclick="openAddProductForm()"
-                            class="bg-primary p-5 rounded-3xl shadow-2xl shadow-green-900/40 active:scale-95 transition-all">
+                            class="bg-primary text-black px-6 py-5 rounded-3xl font-black uppercase text-xs tracking-[0.2em] shadow-2xl shadow-green-900/40 active:scale-95 transition-all">
 
-                            <i data-lucide="plus"></i>
+                            + Add Product
 
                         </button>
 
@@ -232,17 +232,24 @@
 
                     <!-- STATS -->
                     <div
-                        class="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+                        class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
 
                         <div
-                            class="bg-slate-900 rounded-[2rem] border border-slate-800 p-6">
+                            class="bg-slate-900 border border-slate-800 rounded-[2rem] p-6">
 
-                            <p
-                                class="text-xs uppercase text-slate-500 font-black mb-2">
+                            <div class="flex justify-between mb-3">
 
-                                Products
+                                <i data-lucide="package"
+                                    class="text-primary"></i>
 
-                            </p>
+                                <span
+                                    class="text-[10px] uppercase text-slate-500 font-black">
+
+                                    Total
+
+                                </span>
+
+                            </div>
 
                             <h2 id="dash-total"
                                 class="text-4xl font-black">
@@ -252,31 +259,45 @@
                         </div>
 
                         <div
-                            class="bg-red-500/10 rounded-[2rem] border border-red-500/20 p-6">
+                            class="bg-red-500/10 border border-red-500/20 rounded-[2rem] p-6">
 
-                            <p
-                                class="text-xs uppercase text-red-400 font-black mb-2">
+                            <div class="flex justify-between mb-3">
 
-                                Expired
+                                <i data-lucide="alert-triangle"
+                                    class="text-red-400"></i>
 
-                            </p>
+                                <span
+                                    class="text-[10px] uppercase text-red-400 font-black">
+
+                                    Expired
+
+                                </span>
+
+                            </div>
 
                             <h2 id="dash-expired"
-                                class="text-4xl font-black text-red-500">
+                                class="text-4xl font-black text-red-400">
                                 0
                             </h2>
 
                         </div>
 
                         <div
-                            class="bg-yellow-500/10 rounded-[2rem] border border-yellow-500/20 p-6">
+                            class="bg-yellow-500/10 border border-yellow-500/20 rounded-[2rem] p-6">
 
-                            <p
-                                class="text-xs uppercase text-yellow-400 font-black mb-2">
+                            <div class="flex justify-between mb-3">
 
-                                7 Days Left
+                                <i data-lucide="clock-3"
+                                    class="text-yellow-400"></i>
 
-                            </p>
+                                <span
+                                    class="text-[10px] uppercase text-yellow-400 font-black">
+
+                                    7 Days
+
+                                </span>
+
+                            </div>
 
                             <h2 id="dash-expiring"
                                 class="text-4xl font-black text-yellow-400">
@@ -286,14 +307,21 @@
                         </div>
 
                         <div
-                            class="bg-primary/10 rounded-[2rem] border border-primary/20 p-6">
+                            class="bg-primary/10 border border-primary/20 rounded-[2rem] p-6">
 
-                            <p
-                                class="text-xs uppercase text-primary font-black mb-2">
+                            <div class="flex justify-between mb-3">
 
-                                Categories
+                                <i data-lucide="layers-3"
+                                    class="text-primary"></i>
 
-                            </p>
+                                <span
+                                    class="text-[10px] uppercase text-primary font-black">
+
+                                    Categories
+
+                                </span>
+
+                            </div>
 
                             <h2 id="dash-category"
                                 class="text-4xl font-black text-primary">
@@ -304,37 +332,65 @@
 
                     </div>
 
-                    <!-- CHART -->
+                    <!-- CHARTS -->
                     <div
-                        class="bg-slate-900 border border-slate-800 rounded-[2rem] p-6">
+                        class="grid grid-cols-1 xl:grid-cols-2 gap-6">
 
                         <div
-                            class="flex justify-between items-center mb-6">
+                            class="bg-slate-900 border border-slate-800 rounded-[2rem] p-6">
 
-                            <h3
-                                class="text-sm uppercase tracking-[0.3em] text-slate-400 font-black">
+                            <div
+                                class="flex justify-between items-center mb-5">
 
-                                Inventory Analytics
+                                <h3
+                                    class="text-sm uppercase tracking-[0.3em] text-slate-400 font-black">
 
-                            </h3>
+                                    Category Analytics
 
-                            <span
-                                class="bg-primary/10 text-primary text-[10px] px-3 py-1 rounded-full uppercase font-black">
+                                </h3>
 
-                                LIVE
+                                <span
+                                    class="bg-primary/10 text-primary px-3 py-1 rounded-full text-[10px] font-black uppercase">
 
-                            </span>
+                                    Live
+
+                                </span>
+
+                            </div>
+
+                            <div class="h-80">
+
+                                <canvas id="stockChart"></canvas>
+
+                            </div>
 
                         </div>
 
-                        <div class="relative h-72">
+                        <div
+                            class="bg-slate-900 border border-slate-800 rounded-[2rem] p-6">
 
-                            <canvas id="stockChart"></canvas>
+                            <div
+                                class="flex justify-between items-center mb-5">
 
-                            <div id="chart-empty"
-                                class="hidden absolute inset-0 flex items-center justify-center text-slate-500 text-xs uppercase tracking-widest font-black">
+                                <h3
+                                    class="text-sm uppercase tracking-[0.3em] text-slate-400 font-black">
 
-                                No Analytics Data
+                                    Expiry Analytics
+
+                                </h3>
+
+                                <span
+                                    class="bg-yellow-500/10 text-yellow-400 px-3 py-1 rounded-full text-[10px] font-black uppercase">
+
+                                    Monitor
+
+                                </span>
+
+                            </div>
+
+                            <div class="h-80">
+
+                                <canvas id="expiryChart"></canvas>
 
                             </div>
 
@@ -351,9 +407,10 @@
                 class="page-view hidden">
 
                 <div
-                    class="glass border border-slate-800 rounded-[2.5rem] p-6 md:p-8 shadow-2xl">
+                    class="glass border border-slate-800 rounded-[2.8rem] p-6 md:p-8 shadow-2xl">
 
-                    <div class="flex justify-between items-center mb-6">
+                    <div
+                        class="flex flex-wrap gap-4 justify-between items-center mb-8">
 
                         <div>
 
@@ -382,12 +439,12 @@
                             id="search-input"
                             oninput="renderProducts()"
                             type="text"
-                            placeholder="Search product or barcode..."
+                            placeholder="Search product, barcode, category..."
                             class="w-full bg-slate-900 border border-slate-800 rounded-3xl py-5 pl-14 pr-5 text-sm focus:border-primary transition-all">
 
                     </div>
 
-                    <!-- FILTER -->
+                    <!-- FILTERS -->
                     <div
                         class="flex gap-3 overflow-x-auto no-scrollbar pb-2 mb-8">
 
@@ -433,38 +490,39 @@
 
                         </button>
 
+                        <button onclick="setFilter('Snacks')"
+                            class="filter-chip px-5 py-3 rounded-2xl bg-slate-900 border border-slate-800 text-xs font-black uppercase whitespace-nowrap">
+
+                            Snacks
+
+                        </button>
+
+                        <button onclick="setFilter('Frozen')"
+                            class="filter-chip px-5 py-3 rounded-2xl bg-slate-900 border border-slate-800 text-xs font-black uppercase whitespace-nowrap">
+
+                            Frozen
+
+                        </button>
+
+                        <button onclick="setFilter('Bakery')"
+                            class="filter-chip px-5 py-3 rounded-2xl bg-slate-900 border border-slate-800 text-xs font-black uppercase whitespace-nowrap">
+
+                            Bakery
+
+                        </button>
+
+                        <button onclick="setFilter('Cleaning')"
+                            class="filter-chip px-5 py-3 rounded-2xl bg-slate-900 border border-slate-800 text-xs font-black uppercase whitespace-nowrap">
+
+                            Cleaning
+
+                        </button>
+
                     </div>
 
                     <!-- GRID -->
                     <div id="product-grid"
-                        class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                    </div>
-
-                    <!-- EMPTY -->
-                    <div id="empty-products"
-                        class="hidden text-center py-20">
-
-                        <div
-                            class="w-28 h-28 rounded-full bg-slate-900 mx-auto flex items-center justify-center mb-6">
-
-                            <i data-lucide="package-search"
-                                class="w-12 h-12 text-slate-600"></i>
-
-                        </div>
-
-                        <h3 class="text-2xl font-black mb-2">
-
-                            No Products Found
-
-                        </h3>
-
-                        <p
-                            class="text-xs uppercase tracking-widest text-slate-500 font-black">
-
-                            Add your first inventory item
-
-                        </p>
-
+                        class="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6">
                     </div>
 
                 </div>
@@ -476,9 +534,9 @@
                 class="page-view hidden">
 
                 <div
-                    class="glass border border-slate-800 rounded-[2.5rem] p-8 text-center shadow-2xl">
+                    class="glass border border-slate-800 rounded-[2.8rem] p-8 shadow-2xl text-center">
 
-                    <h1 class="text-4xl font-black mb-3">
+                    <h1 class="text-5xl font-black mb-3">
 
                         AI Scanner
 
@@ -487,7 +545,7 @@
                     <p
                         class="text-xs uppercase tracking-[0.3em] text-slate-500 font-black mb-10">
 
-                        Smart Barcode Detection
+                        Smart Barcode Recognition
 
                     </p>
 
@@ -501,25 +559,12 @@
                             class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-1 bg-primary shadow-[0_0_25px_#16a34a] animate-pulse">
                         </div>
 
-                        <!-- SCAN SUCCESS -->
-                        <div id="scan-success"
-                            class="hidden absolute inset-0 bg-green-500/20 backdrop-blur-sm items-center justify-center z-50">
-
-                            <div
-                                class="bg-primary text-black px-10 py-5 rounded-3xl text-xl font-black shadow-2xl">
-
-                                ✓ Product Found
-
-                            </div>
-
-                        </div>
-
                     </div>
 
                     <p
                         class="mt-8 text-xs uppercase tracking-[0.3em] text-slate-500 font-black">
 
-                        Scan Product Barcode
+                        Scan Any Product Barcode
 
                     </p>
 
@@ -532,16 +577,17 @@
                 class="page-view hidden">
 
                 <div
-                    class="glass border border-slate-800 rounded-[2.5rem] p-8 shadow-2xl">
+                    class="glass border border-slate-800 rounded-[2.8rem] p-6 md:p-8 shadow-2xl">
 
                     <div class="text-center mb-10">
 
                         <div
-                            class="w-36 h-36 mx-auto rounded-full border-4 border-primary p-1 shadow-2xl shadow-green-900/40 mb-6">
+                            class="w-40 h-40 mx-auto rounded-full border-4 border-primary p-1 shadow-2xl shadow-green-900/40 mb-6">
 
                             <img
-                                src="https://api.dicebear.com/7.x/adventurer/svg?seed=Sabbir"
-                                class="w-full h-full rounded-full bg-slate-900">
+                                src="sabbir.jpg"
+                                onerror="this.src='https://api.dicebear.com/7.x/adventurer/svg?seed=Sabbir'"
+                                class="w-full h-full rounded-full object-cover bg-slate-900">
 
                         </div>
 
@@ -554,36 +600,35 @@
                         <p
                             class="text-primary text-xs uppercase tracking-[0.4em] font-black mt-3">
 
-                            Developer
+                            Full Stack Developer
 
                         </p>
 
                     </div>
 
-                    <!-- SETTINGS LIST -->
+                    <!-- SETTINGS -->
                     <div class="space-y-4">
 
-                        <!-- DARK MODE -->
                         <div
                             class="bg-slate-900 border border-slate-800 rounded-[2rem] p-5 flex justify-between items-center">
 
                             <div>
 
                                 <h3 class="font-black">
-                                    Dark Mode
+                                    Dark / Light Mode
                                 </h3>
 
                                 <p
                                     class="text-xs uppercase tracking-widest text-slate-500 font-black mt-1">
 
-                                    Switch Theme
+                                    Theme Controller
 
                                 </p>
 
                             </div>
 
                             <button onclick="toggleTheme()"
-                                class="bg-primary/10 border border-primary/20 text-primary px-5 py-3 rounded-2xl font-black text-xs uppercase">
+                                class="bg-primary text-black px-5 py-3 rounded-2xl font-black uppercase text-xs">
 
                                 Toggle
 
@@ -591,20 +636,19 @@
 
                         </div>
 
-                        <!-- DATABASE -->
                         <div
                             class="bg-slate-900 border border-slate-800 rounded-[2rem] p-5 flex justify-between items-center">
 
                             <div>
 
                                 <h3 class="font-black">
-                                    Database
+                                    Cloud Sync
                                 </h3>
 
                                 <p
                                     class="text-xs uppercase tracking-widest text-slate-500 font-black mt-1">
 
-                                    Firebase Cloud Sync
+                                    Firebase Database
 
                                 </p>
 
@@ -619,7 +663,6 @@
 
                         </div>
 
-                        <!-- SCANNER -->
                         <div
                             class="bg-slate-900 border border-slate-800 rounded-[2rem] p-5 flex justify-between items-center">
 
@@ -632,7 +675,7 @@
                                 <p
                                     class="text-xs uppercase tracking-widest text-slate-500 font-black mt-1">
 
-                                    AI Barcode Detection
+                                    AI Barcode System
 
                                 </p>
 
@@ -641,43 +684,41 @@
                             <span
                                 class="bg-green-500/10 text-green-400 px-4 py-2 rounded-full text-[10px] uppercase font-black">
 
-                                Active
+                                Running
 
                             </span>
 
                         </div>
 
-                        <!-- APP VERSION -->
                         <div
                             class="bg-slate-900 border border-slate-800 rounded-[2rem] p-5 flex justify-between items-center">
 
                             <div>
 
                                 <h3 class="font-black">
-                                    App Version
+                                    Device Mode
                                 </h3>
 
                                 <p
                                     class="text-xs uppercase tracking-widest text-slate-500 font-black mt-1">
 
-                                    Stockify Pro
+                                    Mobile + Desktop Optimized
 
                                 </p>
 
                             </div>
 
                             <span
-                                class="text-primary font-black text-sm">
+                                class="bg-blue-500/10 text-blue-400 px-4 py-2 rounded-full text-[10px] uppercase font-black">
 
-                                v3.0
+                                Responsive
 
                             </span>
 
                         </div>
 
-                        <!-- RESET -->
                         <button onclick="window.location.reload()"
-                            class="w-full bg-primary py-5 rounded-[2rem] text-black font-black uppercase tracking-[0.3em] shadow-2xl shadow-green-900/40 active:scale-95 transition-all">
+                            class="w-full bg-primary text-black py-5 rounded-[2rem] font-black uppercase tracking-[0.3em] shadow-2xl shadow-green-900/40 active:scale-95 transition-all mt-6">
 
                             Restart System
 
@@ -695,7 +736,7 @@
 
     <!-- MOBILE NAV -->
     <nav
-        class="lg:hidden fixed bottom-0 left-0 right-0 glass border-t border-slate-800 h-24 flex items-center justify-around z-[999]">
+        class="xl:hidden fixed bottom-0 left-0 right-0 glass border-t border-slate-800 h-24 flex items-center justify-around z-[999]">
 
         <button onclick="switchPage('dashboard')"
             class="nav-btn flex flex-col items-center gap-1 text-primary"
@@ -713,7 +754,7 @@
             class="nav-btn flex flex-col items-center gap-1 text-slate-500"
             data-page="products">
 
-            <i data-lucide="package"></i>
+            <i data-lucide="boxes"></i>
 
             <span class="text-[10px] font-black uppercase">
                 Products
@@ -728,7 +769,7 @@
             <i data-lucide="scan-line"></i>
 
             <span class="text-[10px] font-black uppercase">
-                Scanner
+                Scan
             </span>
 
         </button>
@@ -747,8 +788,139 @@
 
     </nav>
 
+    <!-- SCAN SUCCESS MODAL -->
+    <div id="scan-result-modal"
+        class="fixed inset-0 bg-black/80 backdrop-blur-md hidden items-center justify-center z-[9999] p-4">
+
+        <div
+            class="bg-slate-900 border border-slate-800 rounded-[2.5rem] w-full max-w-md overflow-hidden shadow-2xl">
+
+            <div class="h-64 overflow-hidden">
+
+                <img id="scan-product-image"
+                    class="w-full h-full object-cover">
+
+            </div>
+
+            <div class="p-6">
+
+                <div class="flex justify-between items-start mb-4">
+
+                    <div>
+
+                        <span id="scan-product-category"
+                            class="bg-primary/10 text-primary px-3 py-1 rounded-full text-[10px] font-black uppercase">
+                        </span>
+
+                        <h2 id="scan-product-name"
+                            class="text-3xl font-black mt-3">
+                        </h2>
+
+                    </div>
+
+                    <div
+                        class="bg-primary text-black px-3 py-2 rounded-2xl text-xs font-black uppercase">
+
+                        Found
+
+                    </div>
+
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mb-5">
+
+                    <div
+                        class="bg-slate-800 rounded-2xl p-4">
+
+                        <p
+                            class="text-[10px] uppercase text-slate-500 font-black mb-1">
+
+                            Stock
+
+                        </p>
+
+                        <h3 id="scan-product-stock"
+                            class="text-2xl font-black">
+                        </h3>
+
+                    </div>
+
+                    <div
+                        class="bg-slate-800 rounded-2xl p-4">
+
+                        <p
+                            class="text-[10px] uppercase text-slate-500 font-black mb-1">
+
+                            Expiry
+
+                        </p>
+
+                        <h3 id="scan-product-expiry"
+                            class="text-sm font-black text-yellow-400">
+                        </h3>
+
+                    </div>
+
+                </div>
+
+                <div class="space-y-3 text-sm">
+
+                    <div
+                        class="flex justify-between bg-slate-800 rounded-2xl px-4 py-3">
+
+                        <span class="text-slate-400">
+                            Barcode
+                        </span>
+
+                        <span id="scan-product-sku"
+                            class="font-black">
+                        </span>
+
+                    </div>
+
+                    <div
+                        class="flex justify-between bg-slate-800 rounded-2xl px-4 py-3">
+
+                        <span class="text-slate-400">
+                            Carton Price
+                        </span>
+
+                        <span id="scan-product-carton"
+                            class="font-black text-primary">
+                        </span>
+
+                    </div>
+
+                    <div
+                        class="flex justify-between bg-slate-800 rounded-2xl px-4 py-3">
+
+                        <span class="text-slate-400">
+                            Piece Price
+                        </span>
+
+                        <span id="scan-product-piece"
+                            class="font-black text-primary">
+                        </span>
+
+                    </div>
+
+                </div>
+
+                <button onclick="closeScanModal()"
+                    class="w-full bg-primary text-black py-5 rounded-2xl font-black uppercase tracking-[0.2em] mt-6">
+
+                    Close
+
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
     <!-- SCAN SOUND -->
-    <audio id="scan-sound" preload="auto">
+    <audio id="scan-sound">
 
         <source
             src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"
@@ -756,10 +928,10 @@
 
     </audio>
 
-    <!-- APP JS -->
+    <!-- APP -->
     <script src="app.js"></script>
 
-    <!-- ICONS -->
+    <!-- ICON -->
     <script>
         lucide.createIcons();
     </script>
