@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Stockify Pro Max - Sabbir Hosen Akash</title>
+    <title>Stockify Pro - Sabbir Hosen Akash</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
 
@@ -23,416 +24,221 @@
         }
     </script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; transition: background 0.3s; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        .page-view { display: none; animation: fadeIn 0.4s ease-out; }
-        .page-view.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .filter-chip.active { background: #16a34a; color: white; border-color: #16a34a; }
-        /* PC Version Optimization */
-        @media (min-width: 1024px) {
-            .main-container { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: 280px 1fr; gap: 2rem; padding: 2rem; }
-            nav { width: 260px; height: 90vh; top: 5vh; left: 2rem; border-radius: 2rem; flex-direction: column; justify-content: flex-start; padding: 2rem 1rem; border: 1px solid rgba(255,255,255,0.1); }
-            nav button { width: 100%; justify-content: flex-start; padding: 1rem; gap: 1rem; border-radius: 1rem; }
-            nav button span { font-size: 14px !important; }
-            main { padding-left: 300px; }
-        }
+        body { -webkit-tap-highlight-color: transparent; font-family: 'Inter', sans-serif; }
+        .filter-chip.active { background-color: #16a34a; color: white; border-color: #16a34a; }
+        .page-view { animation: slideUp 0.4s cubic-bezier(0, 0, 0.2, 1); }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
-<body class="bg-slate-50 dark:bg-[#0b1120] text-slate-900 dark:text-slate-100 min-h-screen">
+<body class="bg-[#0b1120] text-slate-100 min-h-screen pb-28">
 
-    <nav class="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-surface/80 backdrop-blur-2xl border-t dark:border-slate-800 h-20 lg:h-auto flex lg:flex-col items-center justify-around z-[100] transition-all">
-        <button onclick="switchPage('dashboard')" class="nav-btn flex flex-col lg:flex-row items-center gap-1.5 text-primary" data-page="dashboard">
-            <i data-lucide="layout-dashboard"></i><span class="text-[10px] font-bold uppercase">Overview</span>
-        </button>
-        <button onclick="switchPage('products')" class="nav-btn flex flex-col lg:flex-row items-center gap-1.5 text-slate-500" data-page="products">
-            <i data-lucide="package"></i><span class="text-[10px] font-bold uppercase">Stock</span>
-        </button>
-        <button onclick="switchPage('scanner')" class="nav-btn flex flex-col lg:flex-row items-center gap-1.5 text-slate-500" data-page="scanner">
-            <i data-lucide="scan-face"></i><span class="text-[10px] font-bold uppercase">Scan</span>
-        </button>
-        <button onclick="switchPage('settings')" class="nav-btn flex flex-col lg:flex-row items-center gap-1.5 text-slate-500" data-page="settings">
-            <i data-lucide="settings"></i><span class="text-[10px] font-bold uppercase">Settings</span>
-        </button>
-    </nav>
-
-    <main class="p-6 lg:p-12 pb-32">
+    <main class="p-6">
         
-        <section id="page-dashboard" class="page-view active space-y-8">
-            <div class="flex justify-between items-end">
-                <div>
-                    <h1 class="text-4xl font-black">Stock Analytics</h1>
-                    <p id="sync-status" class="text-primary text-xs font-bold uppercase flex items-center gap-2"><span class="w-2 h-2 bg-primary rounded-full animate-ping"></span> Live Cloud Synced</p>
+        <section id="page-dashboard" class="page-view hidden space-y-6">
+            <header>
+                <h1 class="text-3xl font-black tracking-tight text-white">Overview</h1>
+                <p class="text-slate-500 text-xs font-bold uppercase tracking-widest">Sabbir's Inventory Status</p>
+            </header>
+
+            <div class="bg-surface/50 p-6 rounded-[2.5rem] border border-slate-800 shadow-2xl">
+                <h3 class="text-xs font-black text-slate-400 uppercase mb-4 text-center">Stock Analytics</h3>
+                <div class="h-48 w-full">
+                    <canvas id="stockChart"></canvas>
                 </div>
-                <img src="sabbir.jpg" class="w-12 h-12 rounded-2xl border-2 border-primary object-cover shadow-lg" onerror="this.src='https://ui-avatars.com/api/?name=Sabbir'">
             </div>
 
-            <div class="bg-white dark:bg-surface p-6 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-xl">
-                <canvas id="stockChart" style="max-height: 250px;"></canvas>
-            </div>
-
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div class="bg-white dark:bg-surface p-6 rounded-[2rem] border border-slate-200 dark:border-slate-800">
-                    <p class="text-[10px] font-black text-slate-500 uppercase">Total Items</p>
-                    <h2 id="dash-total" class="text-3xl font-black mt-2">0</h2>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-surface p-6 rounded-[2rem] border border-slate-800">
+                    <div class="flex justify-between items-start">
+                        <i data-lucide="package" class="w-5 h-5 text-primary"></i>
+                        <span class="text-[8px] font-black text-slate-500 uppercase">Live Items</span>
+                    </div>
+                    <h2 id="dash-total" class="text-4xl font-black mt-2 text-white">0</h2>
                 </div>
-                <div class="bg-red-500/10 p-6 rounded-[2rem] border border-red-500/20">
-                    <p class="text-[10px] font-black text-red-500 uppercase">Expired</p>
-                    <h2 id="dash-expired" class="text-3xl font-black mt-2 text-red-600">0</h2>
+                <div onclick="setFilter('expired')" class="bg-red-500/10 p-6 rounded-[2rem] border border-red-500/20 cursor-pointer active:scale-95 transition-all">
+                    <div class="flex justify-between items-start">
+                        <i data-lucide="alert-triangle" class="w-5 h-5 text-red-500"></i>
+                        <span class="text-[8px] font-black text-red-400 uppercase">Expired</span>
+                    </div>
+                    <h2 id="dash-expired" class="text-4xl font-black mt-2 text-red-500">0</h2>
                 </div>
             </div>
         </section>
 
         <section id="page-products" class="page-view space-y-6">
             <div class="flex justify-between items-center">
-                <h1 class="text-3xl font-black">Stock Management</h1>
-                <button onclick="openAddForm()" class="bg-primary text-white p-4 rounded-2xl active:scale-90 transition-all shadow-lg"><i data-lucide="plus"></i></button>
+                <div>
+                    <h1 class="text-3xl font-black tracking-tight text-white">Stock</h1>
+                    <p class="text-slate-400 text-[10px] font-black uppercase tracking-tighter">Management System</p>
+                </div>
+                <button onclick="openAddProductForm()" class="bg-primary text-white p-4 rounded-[1.5rem] shadow-lg shadow-green-900/30 active:scale-90 transition-all">
+                    <i data-lucide="plus" class="w-6 h-6"></i>
+                </button>
             </div>
 
-            <div class="relative">
-                <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
-                <input id="search-input" oninput="renderProducts()" type="text" placeholder="Search product or barcode..." class="w-full bg-white dark:bg-surface border border-slate-200 dark:border-slate-800 rounded-2xl py-4 pl-12 outline-none focus:ring-2 ring-primary">
+            <div class="relative group">
+                <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500"></i>
+                <input id="search-input" oninput="renderProducts()" type="text" placeholder="Search by name or barcode..." 
+                    class="w-full bg-surface/50 border border-slate-800 rounded-2xl py-4 pl-12 pr-4 text-sm focus:ring-2 ring-primary outline-none transition-all">
             </div>
 
             <div class="flex gap-2 overflow-x-auto no-scrollbar py-2">
-                <button onclick="setFilter('all')" class="filter-chip active px-6 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-bold uppercase whitespace-nowrap">All Items</button>
-                <button onclick="setFilter('Grains')" class="filter-chip px-6 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-bold uppercase whitespace-nowrap">Grains</button>
-                <button onclick="setFilter('Beverages')" class="filter-chip px-6 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-bold uppercase whitespace-nowrap">Beverages</button>
-                <button onclick="setFilter('Dairy')" class="filter-chip px-6 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-bold uppercase whitespace-nowrap">Dairy</button>
-                <button onclick="setFilter('Snacks')" class="filter-chip px-6 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-bold uppercase whitespace-nowrap">Snacks</button>
+                <button onclick="setFilter('expired')" class="filter-chip flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-surface border border-slate-800 text-[10px] font-black text-red-500 whitespace-nowrap uppercase">⚠️ Expired</button>
+                <button onclick="setFilter('all')" class="filter-chip active px-5 py-2.5 rounded-xl bg-surface border border-slate-800 text-[10px] font-black whitespace-nowrap uppercase">All</button>
+                <button onclick="setFilter('Grains')" class="filter-chip px-5 py-2.5 rounded-xl bg-surface border border-slate-800 text-[10px] font-black text-slate-400 whitespace-nowrap uppercase">Grains</button>
+                <button onclick="setFilter('Dairy')" class="filter-chip px-5 py-2.5 rounded-xl bg-surface border border-slate-800 text-[10px] font-black text-slate-400 whitespace-nowrap uppercase">Dairy</button>
+                <button onclick="setFilter('Beverages')" class="filter-chip px-5 py-2.5 rounded-xl bg-surface border border-slate-800 text-[10px] font-black text-slate-400 whitespace-nowrap uppercase">Beverages</button>
+                <button onclick="setFilter('Snacks')" class="filter-chip px-5 py-2.5 rounded-xl bg-surface border border-slate-800 text-[10px] font-black text-slate-400 whitespace-nowrap uppercase">Snacks</button>
             </div>
 
-            <div id="product-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+            <div id="product-grid" class="grid grid-cols-1 gap-5 pb-10"></div>
         </section>
 
-        <section id="page-scanner" class="page-view hidden">
-            <div class="max-w-xl mx-auto text-center space-y-6">
-                <h1 class="text-3xl font-black">AI Scanner</h1>
-                <div class="relative aspect-square rounded-[3rem] overflow-hidden border-8 border-primary/20 bg-black shadow-2xl">
-                    <div id="scanner-container" class="w-full h-full"></div>
-                    <div class="absolute inset-0 border-[60px] border-black/40 pointer-events-none"></div>
-                    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-1 bg-primary shadow-[0_0_20px_#16a34a] animate-bounce"></div>
+        <section id="page-scanner" class="page-view hidden text-center">
+            <h1 class="text-2xl font-black mb-8">AI Barcode Scan</h1>
+            <div class="relative max-w-sm mx-auto aspect-square rounded-[3.5rem] overflow-hidden border-4 border-primary bg-black shadow-2xl">
+                <div id="scanner-container" class="w-full h-full"></div>
+                <div class="absolute inset-0 border-[50px] border-black/40 pointer-events-none"></div>
+                <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-1 bg-primary shadow-[0_0_15px_#16a34a] animate-pulse"></div>
+            </div>
+            <p class="mt-6 text-slate-500 font-bold text-xs uppercase">Align barcode within the frame</p>
+        </section>
+
+        <section id="page-settings" class="page-view hidden space-y-6">
+            <div class="bg-surface p-10 rounded-[3.5rem] border border-slate-800 text-center shadow-2xl">
+                <div class="relative w-32 h-32 mx-auto mb-6 border-4 border-primary p-1 rounded-full shadow-2xl shadow-green-900/20">
+                    <img src="sabbir.jpg" alt="Sabbir" class="w-full h-full rounded-full object-cover bg-slate-800" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=Sabbir'">
                 </div>
-                <p class="text-slate-500 font-bold uppercase tracking-widest text-xs">Scanning for Barcodes...</p>
-            </div>
-        </section>
-
-        <section id="page-settings" class="page-view hidden max-w-2xl mx-auto">
-            <div class="bg-white dark:bg-surface p-10 rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-2xl text-center">
-                <img src="sabbir.jpg" class="w-32 h-32 rounded-full mx-auto border-4 border-primary p-1 mb-6 object-cover shadow-xl" onerror="this.src='https://ui-avatars.com/api/?name=Sabbir'">
-                <h2 class="text-2xl font-black">Sabbir Hosen Akash</h2>
-                <p class="text-primary text-xs font-bold uppercase tracking-[0.3em] mb-10">Lead Developer</p>
+                <h2 class="text-2xl font-black text-white">Sabbir Hosen Akash</h2>
+                <p class="text-primary text-[10px] font-black uppercase tracking-[0.3em] mb-8">System Developer</p>
                 
-                <div class="space-y-4 text-left">
-                    <div class="flex items-center justify-between p-5 bg-slate-100 dark:bg-[#0b1120] rounded-3xl">
-                        <div class="flex items-center gap-3"><i data-lucide="moon" class="w-5 h-5 text-slate-400"></i><span class="font-bold">Dark Mode</span></div>
-                        <button onclick="toggleDarkMode()" id="mode-toggle" class="w-14 h-8 bg-slate-300 dark:bg-primary rounded-full relative transition-all">
-                            <div class="absolute top-1 left-1 dark:left-7 w-6 h-6 bg-white rounded-full transition-all shadow-md"></div>
-                        </button>
+                <div class="space-y-3">
+                    <div class="bg-[#0b1120] p-5 rounded-[2rem] border border-slate-800 flex justify-between items-center group">
+                        <span class="text-xs font-bold text-slate-400 uppercase">Engine Status</span>
+                        <span class="bg-green-500/10 text-green-500 text-[10px] font-black px-3 py-1 rounded-full border border-green-500/20">LIVE / SYNCED</span>
                     </div>
-                    <div class="flex items-center justify-between p-5 bg-slate-100 dark:bg-[#0b1120] rounded-3xl">
-                        <div class="flex items-center gap-3"><i data-lucide="database" class="w-5 h-5 text-slate-400"></i><span class="font-bold">Local Storage</span></div>
-                        <span class="text-green-500 font-black text-xs uppercase">Encrypted</span>
+                    <div class="bg-[#0b1120] p-5 rounded-[2rem] border border-slate-800 flex justify-between items-center">
+                        <span class="text-xs font-bold text-slate-400 uppercase">Database</span>
+                        <span class="text-white text-[10px] font-black">FIREBASE v9</span>
                     </div>
-                    <button onclick="clearData()" class="w-full p-5 bg-red-500/10 text-red-500 rounded-3xl font-black uppercase text-xs border border-red-500/20 active:scale-95 transition-all">Clear All Local Cache</button>
                 </div>
+
+                <button onclick="window.location.reload()" class="mt-10 w-full bg-slate-800/50 py-5 rounded-[2rem] text-[10px] font-black text-slate-300 uppercase tracking-widest border border-slate-700 active:scale-95 transition-all">
+                    Restart Hybrid Engine
+                </button>
+                <p class="mt-6 text-[8px] text-slate-600 font-bold uppercase tracking-widest leading-relaxed">Meetwoyou Development Lab <br> Powered by Cloudinary & Firebase</p>
             </div>
         </section>
+
     </main>
 
-    <div id="product-modal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-[200] hidden flex items-center justify-center p-6 overflow-y-auto">
-        <div class="bg-white dark:bg-surface w-full max-w-lg rounded-[3rem] p-8 space-y-5">
-            <h2 id="modal-title" class="text-2xl font-black uppercase">Product Entry</h2>
-            <form id="product-form" onsubmit="handleSave(event)" class="space-y-4">
-                <input type="hidden" id="form-id">
-                <div class="relative h-40 bg-slate-100 dark:bg-black rounded-3xl overflow-hidden border-2 border-dashed border-slate-300 dark:border-slate-800 flex items-center justify-center">
-                    <img id="form-img-preview" class="absolute inset-0 w-full h-full object-cover hidden">
-                    <input type="file" accept="image/*" onchange="previewImage(this)" class="absolute inset-0 opacity-0 cursor-pointer">
-                    <div id="img-placeholder" class="text-center text-slate-400"><i data-lucide="camera" class="mx-auto mb-1"></i><p class="text-[10px] font-bold">Add Photo</p></div>
+    <nav class="fixed bottom-0 left-0 right-0 bg-surface/80 backdrop-blur-3xl border-t border-slate-800 h-24 flex items-center justify-around px-8 z-[100]">
+        <button onclick="switchPage('dashboard')" class="nav-btn flex flex-col items-center gap-1.5 text-slate-500 transition-all duration-300" data-page="dashboard">
+            <i data-lucide="layout-grid" class="w-6 h-6"></i><span class="text-[9px] font-black uppercase">Home</span>
+        </button>
+        <button onclick="switchPage('products')" class="nav-btn flex flex-col items-center gap-1.5 text-primary transition-all duration-300" data-page="products">
+            <i data-lucide="package" class="w-6 h-6"></i><span class="text-[9px] font-black uppercase">Stock</span>
+        </button>
+        <button onclick="switchPage('scanner')" class="nav-btn flex flex-col items-center gap-1.5 text-slate-500 transition-all duration-300" data-page="scanner">
+            <i data-lucide="scan-line" class="w-6 h-6"></i><span class="text-[9px] font-black uppercase">Scan</span>
+        </button>
+        <button onclick="switchPage('settings')" class="nav-btn flex flex-col items-center gap-1.5 text-slate-500 transition-all duration-300" data-page="settings">
+            <i data-lucide="user-round" class="w-6 h-6"></i><span class="text-[9px] font-black uppercase">Dev</span>
+        </button>
+    </nav>
+
+    <div id="details-modal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-[1000] hidden items-end justify-center p-4">
+        <div class="bg-surface w-full max-w-md rounded-[3.5rem] p-8 space-y-6 animate-in slide-in-from-bottom duration-500">
+            <div class="h-56 rounded-[2.5rem] overflow-hidden bg-black border-2 border-slate-800 shadow-2xl">
+                <img id="detail-img" class="w-full h-full object-cover">
+            </div>
+            <div class="space-y-1">
+                <span id="detail-category" class="bg-primary/20 text-primary text-[10px] px-3 py-1 rounded-lg font-black uppercase tracking-wider">Category</span>
+                <h2 id="detail-name" class="text-3xl font-black text-white">---</h2>
+            </div>
+            <div class="grid grid-cols-2 gap-4 py-4 border-y border-slate-800/50">
+                <div class="space-y-1">
+                    <p class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Carton Price</p>
+                    <p class="text-lg font-black text-white">SAR <span id="detail-ctn-price">0</span></p>
                 </div>
-                <input type="text" id="form-name" placeholder="Product Name" required class="w-full bg-slate-100 dark:bg-[#0b1120] p-5 rounded-2xl outline-none font-bold">
-                <div class="grid grid-cols-2 gap-4">
-                    <input type="text" id="form-sku" placeholder="Barcode" required class="bg-slate-100 dark:bg-[#0b1120] p-5 rounded-2xl outline-none font-mono text-sm">
-                    <select id="form-category" class="bg-slate-100 dark:bg-[#0b1120] p-5 rounded-2xl outline-none font-bold">
-                        <option value="Grains">Grains</option><option value="Beverages">Beverages</option><option value="Dairy">Dairy</option><option value="Snacks">Snacks</option>
-                    </select>
+                <div class="space-y-1 border-l border-slate-800 pl-4">
+                    <p class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Piece Price</p>
+                    <p class="text-lg font-black text-primary">SAR <span id="detail-pce-price">0</span></p>
                 </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <input type="number" step="0.01" id="form-price-ctn" placeholder="Ctn Price" required class="bg-slate-100 dark:bg-[#0b1120] p-5 rounded-2xl outline-none font-bold">
-                    <input type="number" step="0.01" id="form-price-pce" placeholder="Pce Price" required class="bg-slate-100 dark:bg-[#0b1120] p-5 rounded-2xl outline-none font-bold">
-                </div>
-                <input type="date" id="form-expiry" required class="w-full bg-slate-100 dark:bg-[#0b1120] p-5 rounded-2xl outline-none font-bold">
-                <div class="flex gap-3">
-                    <button type="button" onclick="closeModal()" class="flex-1 bg-slate-200 dark:bg-slate-800 p-5 rounded-2xl font-black uppercase text-xs">Cancel</button>
-                    <button type="submit" class="flex-[2] bg-primary text-white p-5 rounded-2xl font-black uppercase text-xs shadow-lg shadow-green-900/40">Save Product</button>
-                </div>
-            </form>
+            </div>
+            <div class="space-y-3 text-xs font-bold text-slate-400">
+                <div class="flex justify-between"><span>Barcode:</span><span id="detail-sku" class="text-white font-mono uppercase">---</span></div>
+                <div class="flex justify-between"><span>Total Inventory:</span><span id="detail-stock" class="text-white">---</span></div>
+                <div class="flex justify-between items-center"><span>Expiration:</span><span id="detail-expiry" class="bg-red-500/10 text-red-500 px-3 py-1 rounded-full text-[10px] font-black">---</span></div>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="document.getElementById('details-modal').classList.add('hidden')" class="flex-1 bg-slate-800 py-5 rounded-[2rem] font-black uppercase tracking-widest text-[10px] text-slate-400 active:scale-95 transition-all">Close</button>
+                <button id="delete-trigger-btn" class="bg-red-500/10 text-red-500 p-5 rounded-[2rem] active:scale-90 transition-all border border-red-500/20"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
+            </div>
         </div>
     </div>
 
-    <audio id="scan-sound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"></audio>
-
-    <script>
-        // === CONFIGURATION ===
-        const firebaseConfig = {
-            apiKey: "AIzaSyBn3x2qSo8k6a9wrxNfLmVliWMmsUk8wfY",
-            authDomain: "meetwoyou-436a2.firebaseapp.com",
-            projectId: "meetwoyou-436a2",
-            storageBucket: "meetwoyou-436a2.firebasestorage.app",
-            messagingSenderId: "612788132077",
-            appId: "1:612788132077:web:0a8b92edf26778efd4d4e4"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        const CLOUDINARY_URL = 'https://api.cloudinary.com/v1_1/dpgawb5sl/image/upload';
-        const CLOUDINARY_PRESET = 'Meetwoyou';
-
-        let products = [];
-        let filter = 'all';
-        let html5QrCode = null;
-        let chart = null;
-
-        // === INITIALIZATION ===
-        document.addEventListener('DOMContentLoaded', () => {
-            loadLocalData();
-            initChart();
-            syncWithFirebase();
-            lucide.createIcons();
-        });
-
-        // === CORE LOGIC ===
-        function loadLocalData() {
-            const saved = localStorage.getItem('stockify_data');
-            if (saved) {
-                products = JSON.parse(saved);
-                renderProducts();
-                updateDashboard();
-            }
-        }
-
-        async function syncWithFirebase() {
-            try {
-                const snapshot = await db.collection('products').get();
-                const cloudData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                if (cloudData.length > 0) {
-                    products = cloudData;
-                    localStorage.setItem('stockify_data', JSON.stringify(products));
-                    renderProducts();
-                    updateDashboard();
-                }
-            } catch (e) { console.log("Offline mode: Using local data"); }
-        }
-
-        function switchPage(pageId) {
-            document.querySelectorAll('.page-view').forEach(p => p.classList.remove('active'));
-            document.getElementById(`page-${pageId}`).classList.add('active');
-            document.querySelectorAll('.nav-btn').forEach(b => {
-                b.classList.toggle('text-primary', b.dataset.page === pageId);
-                b.classList.toggle('text-slate-500', b.dataset.page !== pageId);
-            });
-            if (pageId === 'scanner') startScanner();
-            else stopScanner();
-            if (pageId === 'dashboard') updateDashboard();
-            lucide.createIcons();
-        }
-
-        function renderProducts() {
-            const grid = document.getElementById('product-grid');
-            const search = document.getElementById('search-input').value.toLowerCase();
-            const filtered = products.filter(p => {
-                const matchesSearch = p.name.toLowerCase().includes(search) || p.sku.includes(search);
-                const matchesFilter = filter === 'all' || p.category === filter;
-                return matchesSearch && matchesFilter;
-            });
-
-            grid.innerHTML = filtered.map(p => `
-                <div class="bg-white dark:bg-surface p-5 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm relative group">
-                    <div class="h-40 rounded-3xl overflow-hidden mb-4 bg-slate-100 dark:bg-black">
-                        <img src="${p.image}" class="w-full h-full object-cover">
-                    </div>
-                    <div class="space-y-1">
-                        <h3 class="font-black text-lg uppercase truncate">${p.name}</h3>
-                        <p class="text-[10px] font-bold text-slate-500">SKU: ${p.sku} | ${p.category}</p>
-                    </div>
-                    <div class="flex justify-between items-center mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-                        <div>
-                            <p class="text-[8px] font-black text-slate-400 uppercase">Pricing (Ctn/Pce)</p>
-                            <p class="text-sm font-black text-primary">${p.priceCtn} / ${p.pricePce}</p>
-                        </div>
-                        <div class="flex gap-2">
-                            <button onclick="openEditForm('${p.id}')" class="p-3 bg-slate-100 dark:bg-[#0b1120] rounded-xl text-slate-500"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
-                            <button onclick="deleteProduct('${p.id}')" class="p-3 bg-red-500/10 rounded-xl text-red-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-                        </div>
-                    </div>
+    <div id="products-form-view" class="fixed inset-0 bg-[#0b1120] z-[1000] hidden overflow-y-auto p-6 pb-24">
+        <div class="flex justify-between items-center mb-10">
+            <h2 class="text-2xl font-black uppercase text-white tracking-tight">Product Entry</h2>
+            <button onclick="closeProductForm()" class="bg-surface p-4 rounded-full active:scale-90"><i data-lucide="x"></i></button>
+        </div>
+        
+        <form id="product-form" onsubmit="saveProduct(event)" class="space-y-5">
+            <input type="hidden" id="form-id">
+            
+            <div class="relative h-56 rounded-[3rem] overflow-hidden bg-surface border-2 border-dashed border-slate-800 flex items-center justify-center group shadow-inner">
+                <img id="form-img-output" class="absolute inset-0 w-full h-full object-cover hidden">
+                <div id="image-placeholder" class="text-center">
+                    <i data-lucide="camera" class="w-10 h-10 text-slate-600 mb-2 mx-auto"></i>
+                    <p class="text-[9px] font-black text-slate-600 uppercase tracking-widest">Select Product Photo</p>
                 </div>
-            `).join('');
-            lucide.createIcons();
-        }
+                <input type="file" accept="image/*" onchange="handleFormImage(this)" class="absolute inset-0 opacity-0 cursor-pointer">
+            </div>
 
-        // === SCANNER LOGIC ===
-        function startScanner() {
-            html5QrCode = new Html5Qrcode("scanner-container");
-            html5QrCode.start({ facingMode: "environment" }, { fps: 20, qrbox: 250 }, 
-            (decodedText) => {
-                document.getElementById('scan-sound').play();
-                const found = products.find(p => p.sku === decodedText);
-                if (found) {
-                    stopScanner();
-                    alert("Product Found: " + found.name);
-                    openEditForm(found.id);
-                } else {
-                    if (confirm("New Product Detected! Add to Stock?")) {
-                        stopScanner();
-                        openAddForm(decodedText);
-                    }
-                }
-            });
-        }
-
-        function stopScanner() {
-            if (html5QrCode) {
-                html5QrCode.stop().then(() => html5QrCode = null).catch(() => {});
-            }
-        }
-
-        // === FORM HANDLING ===
-        function openAddForm(sku = '') {
-            document.getElementById('product-modal').classList.remove('hidden');
-            document.getElementById('product-form').reset();
-            document.getElementById('form-id').value = '';
-            document.getElementById('form-sku').value = sku;
-            document.getElementById('form-img-preview').classList.add('hidden');
-            document.getElementById('img-placeholder').classList.remove('hidden');
-        }
-
-        function openEditForm(id) {
-            const p = products.find(x => x.id === id);
-            if (!p) return;
-            openAddForm();
-            document.getElementById('form-id').value = p.id;
-            document.getElementById('form-name').value = p.name;
-            document.getElementById('form-sku').value = p.sku;
-            document.getElementById('form-category').value = p.category;
-            document.getElementById('form-price-ctn').value = p.priceCtn;
-            document.getElementById('form-price-pce').value = p.pricePce;
-            document.getElementById('form-expiry').value = p.expiry;
-            document.getElementById('form-img-preview').src = p.image;
-            document.getElementById('form-img-preview').classList.remove('hidden');
-            document.getElementById('img-placeholder').classList.add('hidden');
-        }
-
-        async function handleSave(e) {
-            e.preventDefault();
-            const id = document.getElementById('form-id').value || Date.now().toString();
-            const btn = e.submitter;
-            btn.innerText = "Syncing..."; btn.disabled = true;
-
-            let imageUrl = document.getElementById('form-img-preview').src;
-            const file = document.querySelector('input[type="file"]').files[0];
-
-            if (file) {
-                const formData = new FormData();
-                formData.append('file', file);
-                formData.append('upload_preset', CLOUDINARY_PRESET);
-                const res = await fetch(CLOUDINARY_URL, { method: 'POST', body: formData });
-                const data = await res.json();
-                imageUrl = data.secure_url;
-            }
-
-            const productData = {
-                id,
-                name: document.getElementById('form-name').value,
-                sku: document.getElementById('form-sku').value,
-                category: document.getElementById('form-category').value,
-                priceCtn: document.getElementById('form-price-ctn').value,
-                pricePce: document.getElementById('form-price-pce').value,
-                expiry: document.getElementById('form-expiry').value,
-                image: imageUrl
-            };
-
-            const index = products.findIndex(p => p.id === id);
-            if (index > -1) products[index] = productData;
-            else products.push(productData);
-
-            localStorage.setItem('stockify_data', JSON.stringify(products));
-            await db.collection('products').doc(id).set(productData);
+            <input type="text" id="form-name" placeholder="Product Title" required class="w-full bg-surface p-6 rounded-[2rem] outline-none font-black text-white placeholder:text-slate-600 border border-transparent focus:border-primary transition-all shadow-lg shadow-black/20">
             
-            closeModal();
-            renderProducts();
-            updateDashboard();
-            btn.innerText = "Save Product"; btn.disabled = false;
-        }
+            <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-1">
+                    <label class="text-[9px] font-black text-slate-500 uppercase ml-4">SKU / Barcode</label>
+                    <input type="text" id="form-sku" required class="w-full bg-surface p-6 rounded-[2rem] font-mono text-sm text-white">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[9px] font-black text-slate-500 uppercase ml-4">Category</label>
+                    <select id="form-category" class="w-full bg-surface p-6 rounded-[2rem] font-black text-xs text-white appearance-none">
+                        <option value="Grains">Grains</option><option value="Dairy" selected>Dairy</option><option value="Beverages">Beverages</option><option value="Snacks">Snacks</option><option value="Packaged">Packaged</option>
+                    </select>
+                </div>
+            </div>
 
-        async function deleteProduct(id) {
-            if (confirm("Are you sure?")) {
-                products = products.filter(p => p.id !== id);
-                localStorage.setItem('stockify_data', JSON.stringify(products));
-                await db.collection('products').doc(id).delete();
-                renderProducts();
-                updateDashboard();
-            }
-        }
+            <div class="bg-primary/5 p-6 rounded-[2.5rem] border border-primary/20 grid grid-cols-3 gap-2">
+                <div class="text-center"><label class="text-[8px] font-black text-slate-500 uppercase">Cartons</label><input type="number" id="form-cartons" value="1" oninput="calculateTotalPieces()" class="bg-transparent w-full text-center font-black text-xl text-white outline-none"></div>
+                <div class="text-center border-x border-slate-800"><label class="text-[8px] font-black text-slate-500 uppercase">Pcs/Ctn</label><input type="number" id="form-pcs-per" value="10" oninput="calculateTotalPieces()" class="bg-transparent w-full text-center font-black text-xl text-white outline-none"></div>
+                <div class="text-center"><label class="text-[8px] font-black text-primary uppercase">Total Stock</label><input type="number" id="form-total-pcs" readonly class="bg-transparent w-full text-center font-black text-xl text-primary outline-none"></div>
+            </div>
 
-        // === DASHBOARD & CHART ===
-        function initChart() {
-            const ctx = document.getElementById('stockChart').getContext('2d');
-            chart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-                    datasets: [{
-                        label: 'Stock Value',
-                        data: [12, 19, 15, 25, 22, 30],
-                        borderColor: '#16a34a',
-                        tension: 0.4,
-                        fill: true,
-                        backgroundColor: 'rgba(22, 163, 74, 0.1)'
-                    }]
-                },
-                options: { 
-                    responsive: true, 
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: { y: { display: false }, x: { grid: { display: false } } }
-                }
-            });
-        }
+            <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-1">
+                    <label class="text-[9px] font-black text-slate-500 uppercase ml-4">Ctn Price (SAR)</label>
+                    <input type="number" step="0.01" id="form-carton-price" oninput="calculatePrices('carton')" class="w-full bg-surface p-6 rounded-[2rem] font-black text-white">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[9px] font-black text-slate-500 uppercase ml-4">Pce Price (SAR)</label>
+                    <input type="number" step="0.01" id="form-piece-price" oninput="calculatePrices('piece')" class="w-full bg-surface p-6 rounded-[2rem] font-black text-primary">
+                </div>
+            </div>
 
-        function updateDashboard() {
-            document.getElementById('dash-total').innerText = products.length;
-            const expired = products.filter(p => new Date(p.expiry) < new Date()).length;
-            document.getElementById('dash-expired').innerText = expired;
-            
-            // Dynamic chart data
-            const categories = [...new Set(products.map(p => p.category))];
-            const counts = categories.map(c => products.filter(p => p.category === c).length);
-            chart.data.labels = categories;
-            chart.data.datasets[0].data = counts;
-            chart.update();
-        }
+            <div class="space-y-1">
+                <label class="text-[9px] font-black text-slate-500 uppercase ml-4">Expiry Date</label>
+                <input type="date" id="form-expiry" required class="w-full bg-surface p-6 rounded-[2rem] font-black text-white uppercase">
+            </div>
 
-        // === UTILS ===
-        function previewImage(input) {
-            if (input.files && input.files[0]) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    document.getElementById('form-img-preview').src = e.target.result;
-                    document.getElementById('form-img-preview').classList.remove('hidden');
-                    document.getElementById('img-placeholder').classList.add('hidden');
-                };
-                reader.readAsDataURL(input.files[0]);
-            }
-        }
+            <button type="submit" id="save-btn" class="w-full bg-primary text-white py-6 rounded-[2.5rem] font-black uppercase tracking-[0.2em] shadow-2xl shadow-green-900/40 active:scale-95 transition-all mt-4">Save & Sync Cloud</button>
+        </form>
+    </div>
 
-        function closeModal() { document.getElementById('product-modal').classList.add('hidden'); }
-        function setFilter(f) { 
-            filter = f; 
-            document.querySelectorAll('.filter-chip').forEach(b => b.classList.toggle('active', b.innerText.toLowerCase().includes(f.toLowerCase())));
-            renderProducts(); 
-        }
-        function toggleDarkMode() { document.documentElement.classList.toggle('dark'); }
-        function clearData() { if(confirm("Clear local cache?")) { localStorage.clear(); location.reload(); } }
-    </script>
+    <script src="app.js"></script>
+    <script>lucide.createIcons();</script>
 </body>
 </html>
