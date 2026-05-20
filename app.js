@@ -1,29 +1,15 @@
-/* =========================
-   STOCKIFY PRO ULTRA JS FIXED
-   ========================= */
-
-let products = JSON.parse(localStorage.getItem("products")) || [];
-let currentFilter = "all";
+// =====================
+// GLOBAL STATE
+// =====================
 let currentPage = "dashboard";
-let chart1, chart2;
+let products = [];
+let filter = "all";
+let darkMode = true;
 
-/* -------------------------
-   INIT
-------------------------- */
-document.addEventListener("DOMContentLoaded", () => {
-    renderProducts();
-    updateDashboard();
-    initCharts();
-    initScanner();
-    applyTheme();
-});
-
-/* -------------------------
-   PAGE SWITCH
-------------------------- */
+// =====================
+// PAGE SWITCH
+// =====================
 function switchPage(page) {
-    currentPage = page;
-
     document.querySelectorAll(".page-view").forEach(p => p.classList.add("hidden"));
     document.getElementById("page-" + page).classList.remove("hidden");
 
@@ -34,233 +20,225 @@ function switchPage(page) {
 
     document.querySelectorAll(`[data-page="${page}"]`).forEach(btn => {
         btn.classList.add("text-primary");
+        btn.classList.remove("text-slate-500");
     });
 
-    lucide.createIcons();
+    currentPage = page;
+
+    if (page === "dashboard") updateDashboard();
+    if (page === "products") renderProducts();
+    if (page === "scanner") initScanner();
 }
 
-/* -------------------------
-   ADD PRODUCT MODAL
-------------------------- */
-function openAddProductForm(editId = null) {
-    const product = editId ? products.find(p => p.id === editId) : {};
-
-    const modal = document.createElement("div");
-    modal.id = "product-modal";
-    modal.className = "fixed inset-0 bg-black/70 flex items-center justify-center z-[9999] p-4";
-
-    modal.innerHTML = `
-    <div class="bg-slate-900 p-6 rounded-3xl w-full max-w-md space-y-3 border border-slate-700">
-        <h2 class="text-xl font-bold">${editId ? "Edit Product" : "Add Product"}</h2>
-
-        <input id="p-name" class="w-full p-3 bg-slate-800 rounded-xl" placeholder="Product Name" value="${product.name || ""}">
-        <input id="p-barcode" class="w-full p-3 bg-slate-800 rounded-xl" placeholder="Barcode" value="${product.barcode || ""}">
-        <input id="p-stock" type="number" class="w-full p-3 bg-slate-800 rounded-xl" placeholder="Stock" value="${product.stock || ""}">
-        <input id="p-price" type="number" class="w-full p-3 bg-slate-800 rounded-xl" placeholder="Price" value="${product.price || ""}">
-        <input id="p-expiry" type="date" class="w-full p-3 bg-slate-800 rounded-xl" value="${product.expiry || ""}">
-        <input id="p-category" class="w-full p-3 bg-slate-800 rounded-xl" placeholder="Category" value="${product.category || ""}">
-
-        <div class="flex gap-2">
-            <button onclick="saveProduct('${editId || ""}')" class="flex-1 bg-green-500 text-black py-3 rounded-xl font-bold">Save</button>
-            <button onclick="closeModal()" class="flex-1 bg-red-500 py-3 rounded-xl font-bold">Close</button>
-        </div>
-    </div>
-    `;
-
-    document.body.appendChild(modal);
+// =====================
+// THEME TOGGLE
+// =====================
+function toggleTheme() {
+    darkMode = !darkMode;
+    document.documentElement.classList.toggle("dark");
 }
 
-function closeModal() {
-    const m = document.getElementById("product-modal");
-    if (m) m.remove();
-}
+// =====================
+// ADD PRODUCT (FIXED)
+// =====================
+function openAddProductForm() {
+    const name = prompt("Product Name:");
+    if (!name) return;
 
-/* -------------------------
-   SAVE PRODUCT (ADD / EDIT)
-------------------------- */
-function saveProduct(id) {
-    const data = {
-        id: id || Date.now().toString(),
-        name: document.getElementById("p-name").value,
-        barcode: document.getElementById("p-barcode").value,
-        stock: document.getElementById("p-stock").value,
-        price: document.getElementById("p-price").value,
-        expiry: document.getElementById("p-expiry").value,
-        category: document.getElementById("p-category").value
+    const category = prompt("Category:");
+    const stock = parseInt(prompt("Stock:")) || 0;
+    const expiry = prompt("Expiry Date (YYYY-MM-DD):");
+    const barcode = prompt("Barcode:");
+
+    const product = {
+        id: Date.now(),
+        name,
+        category,
+        stock,
+        expiry,
+        barcode,
+        carton: 100,
+        piece: 10,
+        image: "https://source.unsplash.com/400x300/?product"
     };
 
-    if (!id) {
-        products.push(data);
-    } else {
-        products = products.map(p => p.id === id ? data : p);
-    }
-
-    localStorage.setItem("products", JSON.stringify(products));
-
-    closeModal();
+    products.push(product);
     renderProducts();
     updateDashboard();
 }
 
-/* -------------------------
-   DELETE
-------------------------- */
-function deleteProduct(id) {
-    products = products.filter(p => p.id !== id);
-    localStorage.setItem("products", JSON.stringify(products));
+// =====================
+// FILTER
+// =====================
+function setFilter(f) {
+    filter = f;
+    document.querySelectorAll(".filter-chip").forEach(b => b.classList.remove("active"));
+    event.target.classList.add("active");
     renderProducts();
-    updateDashboard();
 }
 
-/* -------------------------
-   EDIT
-------------------------- */
-function editProduct(id) {
-    openAddProductForm(id);
-}
-
-/* -------------------------
-   RENDER PRODUCTS
-------------------------- */
+// =====================
+// RENDER PRODUCTS (FIXED)
+// =====================
 function renderProducts() {
     const grid = document.getElementById("product-grid");
-    if (!grid) return;
+    const search = document.getElementById("search-input")?.value.toLowerCase() || "";
 
-    let list = [...products];
+    let filtered = products.filter(p => {
+        let matchSearch =
+            p.name.toLowerCase().includes(search) ||
+            p.category.toLowerCase().includes(search) ||
+            p.barcode.includes(search);
 
-    const search = document.getElementById("search-input")?.value || "";
+        let matchFilter =
+            filter === "all" ||
+            p.category === filter ||
+            (filter === "expired" && isExpired(p)) ||
+            (filter === "expiring" && isExpiring(p));
 
-    if (search) {
-        list = list.filter(p =>
-            p.name.toLowerCase().includes(search.toLowerCase()) ||
-            p.barcode.includes(search)
-        );
-    }
+        return matchSearch && matchFilter;
+    });
 
-    if (currentFilter !== "all") {
-        list = list.filter(p => p.category === currentFilter);
-    }
+    grid.innerHTML = "";
 
-    grid.innerHTML = list.map(p => `
-        <div class="bg-slate-900 p-5 rounded-3xl border border-slate-800 space-y-2">
-            <h3 class="text-xl font-bold">${p.name}</h3>
-            <p class="text-xs text-slate-400">Barcode: ${p.barcode}</p>
-            <p>Stock: ${p.stock}</p>
-            <p>Price: ${p.price}</p>
-            <p>Expiry: ${p.expiry}</p>
-            <p class="text-primary">${p.category}</p>
+    filtered.forEach(p => {
+        grid.innerHTML += `
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 card-hover">
+            <h3 class="text-xl font-black">${p.name}</h3>
+            <p class="text-xs text-slate-500 uppercase">${p.category}</p>
 
-            <div class="flex gap-2 mt-3">
-                <button onclick="editProduct('${p.id}')" class="flex-1 bg-blue-500 py-2 rounded-xl">Edit</button>
-                <button onclick="deleteProduct('${p.id}')" class="flex-1 bg-red-500 py-2 rounded-xl">Delete</button>
+            <div class="mt-4 flex justify-between text-sm">
+                <span>Stock</span>
+                <span class="font-black">${p.stock}</span>
             </div>
-        </div>
-    `).join("");
+
+            <div class="mt-2 flex justify-between text-sm">
+                <span>Expiry</span>
+                <span class="text-yellow-400 font-black">${p.expiry}</span>
+            </div>
+        </div>`;
+    });
 
     updateDashboard();
 }
 
-/* -------------------------
-   FILTER
-------------------------- */
-function setFilter(val) {
-    currentFilter = val;
-    renderProducts();
-}
-
-/* -------------------------
-   DASHBOARD
-------------------------- */
+// =====================
+// DASHBOARD FIX
+// =====================
 function updateDashboard() {
     document.getElementById("dash-total").innerText = products.length;
+
+    let expired = products.filter(isExpired).length;
+    let expiring = products.filter(isExpiring).length;
+
+    document.getElementById("dash-expired").innerText = expired;
+    document.getElementById("dash-expiring").innerText = expiring;
+    document.getElementById("dash-category").innerText =
+        [...new Set(products.map(p => p.category))].length;
+
+    drawCharts();
 }
 
-/* -------------------------
-   THEME TOGGLE
-------------------------- */
-function toggleTheme() {
-    document.documentElement.classList.toggle("dark");
-
-    const mode = document.documentElement.classList.contains("dark") ? "dark" : "light";
-    localStorage.setItem("theme", mode);
+// =====================
+// DATE HELPERS
+// =====================
+function isExpired(p) {
+    return new Date(p.expiry) < new Date();
 }
 
-function applyTheme() {
-    const saved = localStorage.getItem("theme");
-    if (saved === "light") document.documentElement.classList.remove("dark");
+function isExpiring(p) {
+    let d = new Date(p.expiry);
+    let now = new Date();
+    let diff = (d - now) / (1000 * 60 * 60 * 24);
+    return diff <= 7 && diff >= 0;
 }
 
-/* -------------------------
-   CHARTS (SAFE)
-------------------------- */
-function initCharts() {
-    const ctx1 = document.getElementById("stockChart");
-    const ctx2 = document.getElementById("expiryChart");
+// =====================
+// CHARTS FIXED
+// =====================
+let stockChart, expiryChart;
+
+function drawCharts() {
+    let ctx1 = document.getElementById("stockChart");
+    let ctx2 = document.getElementById("expiryChart");
 
     if (!ctx1 || !ctx2) return;
 
-    chart1 = new Chart(ctx1, {
+    let categories = {};
+    products.forEach(p => {
+        categories[p.category] = (categories[p.category] || 0) + 1;
+    });
+
+    let labels = Object.keys(categories);
+    let data = Object.values(categories);
+
+    if (stockChart) stockChart.destroy();
+    if (expiryChart) expiryChart.destroy();
+
+    stockChart = new Chart(ctx1, {
         type: "bar",
         data: {
-            labels: ["Grains", "Dairy", "Snacks"],
+            labels,
             datasets: [{
-                label: "Stock",
-                data: [5, 10, 3]
+                label: "Products",
+                data
             }]
         }
     });
 
-    chart2 = new Chart(ctx2, {
-        type: "pie",
+    expiryChart = new Chart(ctx2, {
+        type: "doughnut",
         data: {
-            labels: ["Expired", "Active"],
+            labels: ["Expired", "Valid"],
             datasets: [{
-                data: [2, 10]
+                data: [
+                    products.filter(isExpired).length,
+                    products.length - products.filter(isExpired).length
+                ]
             }]
         }
     });
 }
 
-/* -------------------------
-   SCANNER FIXED
-------------------------- */
+// =====================
+// SCANNER FIX
+// =====================
+let scanner;
+
 function initScanner() {
-    const scanner = new Html5Qrcode("scanner-container");
+    if (scanner) return;
 
-    Html5Qrcode.getCameras().then(devices => {
-        if (devices && devices.length) {
-            scanner.start(
-                devices[0].id,
-                { fps: 10, qrbox: 250 },
-                (code) => handleScan(code)
-            );
+    scanner = new Html5Qrcode("scanner-container");
+
+    scanner.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: 250 },
+        (decodedText) => {
+            handleScan(decodedText);
         }
-    }).catch(err => console.log(err));
+    );
 }
 
-/* -------------------------
-   SCAN RESULT LOGIC
-------------------------- */
-function handleScan(barcode) {
-    const found = products.find(p => p.barcode === barcode);
+// =====================
+// SCAN RESULT
+// =====================
+function handleScan(code) {
+    document.getElementById("scan-sound").play();
 
-    if (found) {
-        showScanModal(found);
-    } else {
-        const create = confirm("Product not found. Add new?");
-        if (create) {
-            openAddProductForm();
-        }
+    let product = products.find(p => p.barcode === code);
+
+    if (!product) {
+        alert("Product not found!");
+        return;
     }
-}
 
-function showScanModal(p) {
-    document.getElementById("scan-product-name").innerText = p.name;
-    document.getElementById("scan-product-category").innerText = p.category;
-    document.getElementById("scan-product-stock").innerText = p.stock;
-    document.getElementById("scan-product-expiry").innerText = p.expiry;
-    document.getElementById("scan-product-sku").innerText = p.barcode;
-    document.getElementById("scan-product-piece").innerText = p.price;
+    document.getElementById("scan-product-name").innerText = product.name;
+    document.getElementById("scan-product-category").innerText = product.category;
+    document.getElementById("scan-product-stock").innerText = product.stock;
+    document.getElementById("scan-product-expiry").innerText = product.expiry;
+    document.getElementById("scan-product-sku").innerText = product.barcode;
+    document.getElementById("scan-product-carton").innerText = product.carton;
+    document.getElementById("scan-product-piece").innerText = product.piece;
 
     document.getElementById("scan-result-modal").classList.remove("hidden");
     document.getElementById("scan-result-modal").classList.add("flex");
@@ -269,3 +247,18 @@ function showScanModal(p) {
 function closeScanModal() {
     document.getElementById("scan-result-modal").classList.add("hidden");
 }
+
+// =====================
+// INIT
+// =====================
+window.onload = () => {
+    switchPage("dashboard");
+
+    // demo data
+    products = [
+        { id: 1, name: "Rice", category: "Grains", stock: 20, expiry: "2026-06-10", barcode: "111", carton: 120, piece: 12 },
+        { id: 2, name: "Milk", category: "Dairy", stock: 5, expiry: "2026-05-22", barcode: "222", carton: 60, piece: 6 }
+    ];
+
+    renderProducts();
+};
