@@ -2,40 +2,37 @@
 <html lang="en" class="dark">
 
 <head>
-
     <meta charset="UTF-8" />
-
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 
-    <title>Stockify Pro Ultra</title>
+    <title>Stockify Ultra</title>
 
-    <!-- TAILWIND -->
+    <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- ICONS -->
+    <!-- Lucide -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
-    <!-- SCANNER -->
+    <!-- Scanner -->
     <script src="https://unpkg.com/html5-qrcode"></script>
 
-    <!-- CHART -->
+    <!-- Chart -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <!-- FIREBASE -->
+    <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
 
     <script>
         tailwind.config = {
-            darkMode: "class",
+            darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
-                        primary: "#16a34a",
-                        darkBg: "#020617",
-                        surface: "#0f172a"
+                        primary: '#22c55e',
+                        darkbg: '#020617',
+                        surface: '#0f172a'
                     }
                 }
             }
@@ -45,27 +42,24 @@
     <style>
         * {
             -webkit-tap-highlight-color: transparent;
-            scroll-behavior: smooth;
         }
 
         body {
             font-family: Inter, sans-serif;
-            background: #020617;
         }
 
-        .glass {
-            background: rgba(15, 23, 42, .75);
-            backdrop-filter: blur(22px);
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
         }
 
         .page-view {
-            animation: fade .35s ease;
+            animation: fade .3s ease;
         }
 
         @keyframes fade {
             from {
                 opacity: 0;
-                transform: translateY(20px);
+                transform: translateY(15px);
             }
 
             to {
@@ -74,118 +68,312 @@
             }
         }
 
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-
         .filter-chip.active {
-            background: #16a34a;
-            border-color: #16a34a;
-            color: white;
-        }
-
-        .card-hover {
-            transition: .25s ease;
-        }
-
-        .card-hover:hover {
-            transform: translateY(-5px);
-        }
-
-        input,
-        select,
-        textarea {
-            outline: none;
-        }
-
-        @media(min-width:1200px) {
-
-            .desktop-layout {
-                display: grid;
-                grid-template-columns: 320px 1fr;
-                gap: 30px;
-            }
-
+            background: #22c55e;
+            color: black;
         }
     </style>
 
 </head>
 
-<body class="text-white min-h-screen pb-28">
+<body class="bg-darkbg text-white min-h-screen pb-32">
 
-    <main class="max-w-[1800px] mx-auto p-4 md:p-8 desktop-layout">
+    <!-- AUDIO -->
+    <audio id="scan-sound">
+        <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"
+            type="audio/mpeg">
+    </audio>
 
-        <!-- SIDEBAR -->
-        <aside class="hidden xl:block">
+    <!-- MAIN -->
+    <main class="max-w-7xl mx-auto p-4 md:p-8">
 
-            <div
-                class="glass border border-slate-800 rounded-[2.5rem] p-8 sticky top-8 shadow-2xl">
+        <!-- DASHBOARD -->
+        <section id="page-dashboard"
+            class="page-view hidden space-y-6">
 
-                <div class="flex items-center gap-4 mb-12">
+            <div class="flex items-center justify-between">
 
-                    <div
-                        class="w-16 h-16 rounded-3xl bg-primary flex items-center justify-center shadow-2xl shadow-green-900/40">
+                <div>
+                    <h1 class="text-3xl md:text-5xl font-black">
+                        Dashboard
+                    </h1>
 
-                        <i data-lucide="package" class="w-8 h-8"></i>
+                    <p class="text-slate-500 text-sm mt-1">
+                        Stockify Ultra Analytics
+                    </p>
+                </div>
 
-                    </div>
+                <button onclick="toggleTheme()"
+                    class="bg-surface p-4 rounded-2xl border border-slate-800">
 
-                    <div>
+                    <i data-lucide="moon-star"></i>
 
-                        <h1 class="text-3xl font-black">
-                            Stockify
-                        </h1>
+                </button>
 
-                        <p
-                            class="text-xs uppercase tracking-[0.35em] text-slate-500 font-black mt-1">
+            </div>
 
-                            PRO ULTRA
+            <!-- cards -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
 
-                        </p>
+                <div
+                    class="bg-surface p-6 rounded-3xl border border-slate-800">
 
-                    </div>
+                    <p class="text-slate-500 text-xs uppercase">
+                        Total Products
+                    </p>
+
+                    <h2 id="dash-total"
+                        class="text-4xl font-black mt-3">
+                        0
+                    </h2>
 
                 </div>
 
-                <div class="space-y-3">
+                <div
+                    class="bg-red-500/10 border border-red-500/20 p-6 rounded-3xl">
 
-                    <button onclick="switchPage('dashboard')"
-                        class="nav-btn w-full flex items-center gap-4 px-5 py-5 rounded-2xl bg-primary/10 border border-primary/20 text-primary font-black uppercase text-xs"
-                        data-page="dashboard">
+                    <p class="text-red-400 text-xs uppercase">
+                        Expired
+                    </p>
 
-                        <i data-lucide="layout-grid"></i>
+                    <h2 id="dash-expired"
+                        class="text-4xl font-black mt-3 text-red-400">
+                        0
+                    </h2>
 
-                        Dashboard
+                </div>
 
-                    </button>
+                <div
+                    class="bg-yellow-500/10 border border-yellow-500/20 p-6 rounded-3xl">
 
-                    <button onclick="switchPage('products')"
-                        class="nav-btn w-full flex items-center gap-4 px-5 py-5 rounded-2xl text-slate-400 font-black uppercase text-xs"
-                        data-page="products">
+                    <p class="text-yellow-400 text-xs uppercase">
+                        Expiring 7 Days
+                    </p>
 
-                        <i data-lucide="boxes"></i>
+                    <h2 id="dash-expiring"
+                        class="text-4xl font-black mt-3 text-yellow-400">
+                        0
+                    </h2>
 
+                </div>
+
+                <div
+                    class="bg-primary/10 border border-primary/20 p-6 rounded-3xl">
+
+                    <p class="text-primary text-xs uppercase">
+                        Categories
+                    </p>
+
+                    <h2 id="dash-category"
+                        class="text-4xl font-black mt-3 text-primary">
+                        0
+                    </h2>
+
+                </div>
+
+            </div>
+
+            <!-- charts -->
+            <div class="grid md:grid-cols-2 gap-5">
+
+                <div
+                    class="bg-surface rounded-3xl p-6 border border-slate-800">
+
+                    <h2 class="font-black text-xl mb-5">
+                        Category Analytics
+                    </h2>
+
+                    <canvas id="chart1"></canvas>
+
+                </div>
+
+                <div
+                    class="bg-surface rounded-3xl p-6 border border-slate-800">
+
+                    <h2 class="font-black text-xl mb-5">
+                        Expiry Analytics
+                    </h2>
+
+                    <canvas id="chart2"></canvas>
+
+                </div>
+
+            </div>
+
+        </section>
+
+        <!-- PRODUCTS -->
+        <section id="page-products"
+            class="page-view space-y-6">
+
+            <div class="flex items-center justify-between">
+
+                <div>
+
+                    <h1
+                        class="text-3xl md:text-5xl font-black">
                         Products
+                    </h1>
+
+                    <p class="text-slate-500 text-sm">
+                        Manage inventory
+                    </p>
+
+                </div>
+
+                <button onclick="openAddProductForm()"
+                    class="bg-primary text-black p-5 rounded-3xl font-black active:scale-95">
+
+                    <i data-lucide="plus"></i>
+
+                </button>
+
+            </div>
+
+            <!-- search -->
+            <div class="relative">
+
+                <i data-lucide="search"
+                    class="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500 w-5 h-5"></i>
+
+                <input id="search-input"
+                    oninput="renderProducts()"
+                    type="text"
+                    placeholder="Search product..."
+                    class="w-full bg-surface border border-slate-800 rounded-3xl py-5 pl-14 pr-5 outline-none">
+
+            </div>
+
+            <!-- filter -->
+            <div
+                class="flex gap-3 overflow-x-auto no-scrollbar pb-2">
+
+                <button onclick="setFilter('all')"
+                    class="filter-chip active bg-surface px-5 py-3 rounded-2xl whitespace-nowrap">
+                    All
+                </button>
+
+                <button onclick="setFilter('expired')"
+                    class="filter-chip bg-surface px-5 py-3 rounded-2xl whitespace-nowrap">
+                    Expired
+                </button>
+
+                <button onclick="setFilter('expiring')"
+                    class="filter-chip bg-surface px-5 py-3 rounded-2xl whitespace-nowrap">
+                    7 Days Left
+                </button>
+
+                <button onclick="setFilter('Beverages')"
+                    class="filter-chip bg-surface px-5 py-3 rounded-2xl whitespace-nowrap">
+                    Beverages
+                </button>
+
+                <button onclick="setFilter('Snacks')"
+                    class="filter-chip bg-surface px-5 py-3 rounded-2xl whitespace-nowrap">
+                    Snacks
+                </button>
+
+                <button onclick="setFilter('Frozen')"
+                    class="filter-chip bg-surface px-5 py-3 rounded-2xl whitespace-nowrap">
+                    Frozen
+                </button>
+
+                <button onclick="setFilter('Dairy')"
+                    class="filter-chip bg-surface px-5 py-3 rounded-2xl whitespace-nowrap">
+                    Dairy
+                </button>
+
+                <button onclick="setFilter('Bakery')"
+                    class="filter-chip bg-surface px-5 py-3 rounded-2xl whitespace-nowrap">
+                    Bakery
+                </button>
+
+                <button onclick="setFilter('Household')"
+                    class="filter-chip bg-surface px-5 py-3 rounded-2xl whitespace-nowrap">
+                    Household
+                </button>
+
+            </div>
+
+            <!-- products -->
+            <div id="product-grid"
+                class="grid md:grid-cols-2 xl:grid-cols-3 gap-5">
+
+            </div>
+
+        </section>
+
+        <!-- SCANNER -->
+        <section id="page-scanner"
+            class="page-view hidden text-center space-y-6">
+
+            <div>
+
+                <h1 class="text-3xl font-black">
+                    Smart Scanner
+                </h1>
+
+                <p class="text-slate-500 mt-2">
+                    Scan barcode instantly
+                </p>
+
+            </div>
+
+            <div
+                class="max-w-lg mx-auto overflow-hidden rounded-[3rem] border-4 border-primary">
+
+                <div id="scanner-container"
+                    class="w-full aspect-square bg-black"></div>
+
+            </div>
+
+        </section>
+
+        <!-- SETTINGS -->
+        <section id="page-settings"
+            class="page-view hidden max-w-3xl mx-auto">
+
+            <div
+                class="bg-surface border border-slate-800 rounded-[3rem] p-8 md:p-12 text-center">
+
+                <img src="sabbir.jpg"
+                    onerror="this.src='https://api.dicebear.com/7.x/adventurer/svg?seed=Sabbir'"
+                    class="w-40 h-40 rounded-full object-cover mx-auto border-4 border-primary">
+
+                <h1 class="text-4xl font-black mt-6">
+                    Sabbir Hosen Akash
+                </h1>
+
+                <p class="text-primary mt-2 uppercase tracking-[5px] text-xs">
+                    Developer
+                </p>
+
+                <div
+                    class="grid md:grid-cols-2 gap-5 mt-10">
+
+                    <button onclick="toggleTheme()"
+                        class="bg-darkbg border border-slate-800 p-6 rounded-3xl text-left">
+
+                        <h2 class="font-black text-xl">
+                            Dark / Light
+                        </h2>
+
+                        <p class="text-slate-500 text-sm mt-2">
+                            Toggle theme
+                        </p>
 
                     </button>
 
-                    <button onclick="switchPage('scanner')"
-                        class="nav-btn w-full flex items-center gap-4 px-5 py-5 rounded-2xl text-slate-400 font-black uppercase text-xs"
-                        data-page="scanner">
+                    <button onclick="window.location.reload()"
+                        class="bg-darkbg border border-slate-800 p-6 rounded-3xl text-left">
 
-                        <i data-lucide="scan-line"></i>
+                        <h2 class="font-black text-xl">
+                            Restart App
+                        </h2>
 
-                        AI Scanner
-
-                    </button>
-
-                    <button onclick="switchPage('settings')"
-                        class="nav-btn w-full flex items-center gap-4 px-5 py-5 rounded-2xl text-slate-400 font-black uppercase text-xs"
-                        data-page="settings">
-
-                        <i data-lucide="settings-2"></i>
-
-                        Settings
+                        <p class="text-slate-500 text-sm mt-2">
+                            Refresh Stockify
+                        </p>
 
                     </button>
 
@@ -193,594 +381,57 @@
 
             </div>
 
-        </aside>
-
-        <!-- CONTENT -->
-        <section class="space-y-6">
-
-            <!-- DASHBOARD -->
-            <section id="page-dashboard" class="page-view">
-
-                <div
-                    class="glass border border-slate-800 rounded-[2.8rem] p-6 md:p-8 shadow-2xl">
-
-                    <div class="flex flex-wrap gap-4 justify-between items-center mb-8">
-
-                        <div>
-
-                            <h1 class="text-4xl md:text-5xl font-black">
-                                Dashboard
-                            </h1>
-
-                            <p
-                                class="text-xs uppercase tracking-[0.3em] text-slate-500 font-black mt-2">
-
-                                Smart Analytics System
-
-                            </p>
-
-                        </div>
-
-                        <button onclick="openAddProductForm()"
-                            class="bg-primary text-black px-6 py-5 rounded-3xl font-black uppercase text-xs tracking-[0.2em] shadow-2xl shadow-green-900/40 active:scale-95 transition-all">
-
-                            + Add Product
-
-                        </button>
-
-                    </div>
-
-                    <!-- STATS -->
-                    <div
-                        class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-
-                        <div
-                            class="bg-slate-900 border border-slate-800 rounded-[2rem] p-6">
-
-                            <div class="flex justify-between mb-3">
-
-                                <i data-lucide="package"
-                                    class="text-primary"></i>
-
-                                <span
-                                    class="text-[10px] uppercase text-slate-500 font-black">
-
-                                    Total
-
-                                </span>
-
-                            </div>
-
-                            <h2 id="dash-total"
-                                class="text-4xl font-black">
-                                0
-                            </h2>
-
-                        </div>
-
-                        <div
-                            class="bg-red-500/10 border border-red-500/20 rounded-[2rem] p-6">
-
-                            <div class="flex justify-between mb-3">
-
-                                <i data-lucide="alert-triangle"
-                                    class="text-red-400"></i>
-
-                                <span
-                                    class="text-[10px] uppercase text-red-400 font-black">
-
-                                    Expired
-
-                                </span>
-
-                            </div>
-
-                            <h2 id="dash-expired"
-                                class="text-4xl font-black text-red-400">
-                                0
-                            </h2>
-
-                        </div>
-
-                        <div
-                            class="bg-yellow-500/10 border border-yellow-500/20 rounded-[2rem] p-6">
-
-                            <div class="flex justify-between mb-3">
-
-                                <i data-lucide="clock-3"
-                                    class="text-yellow-400"></i>
-
-                                <span
-                                    class="text-[10px] uppercase text-yellow-400 font-black">
-
-                                    7 Days
-
-                                </span>
-
-                            </div>
-
-                            <h2 id="dash-expiring"
-                                class="text-4xl font-black text-yellow-400">
-                                0
-                            </h2>
-
-                        </div>
-
-                        <div
-                            class="bg-primary/10 border border-primary/20 rounded-[2rem] p-6">
-
-                            <div class="flex justify-between mb-3">
-
-                                <i data-lucide="layers-3"
-                                    class="text-primary"></i>
-
-                                <span
-                                    class="text-[10px] uppercase text-primary font-black">
-
-                                    Categories
-
-                                </span>
-
-                            </div>
-
-                            <h2 id="dash-category"
-                                class="text-4xl font-black text-primary">
-                                0
-                            </h2>
-
-                        </div>
-
-                    </div>
-
-                    <!-- CHARTS -->
-                    <div
-                        class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-
-                        <div
-                            class="bg-slate-900 border border-slate-800 rounded-[2rem] p-6">
-
-                            <div
-                                class="flex justify-between items-center mb-5">
-
-                                <h3
-                                    class="text-sm uppercase tracking-[0.3em] text-slate-400 font-black">
-
-                                    Category Analytics
-
-                                </h3>
-
-                                <span
-                                    class="bg-primary/10 text-primary px-3 py-1 rounded-full text-[10px] font-black uppercase">
-
-                                    Live
-
-                                </span>
-
-                            </div>
-
-                            <div class="h-80">
-
-                                <canvas id="stockChart"></canvas>
-
-                            </div>
-
-                        </div>
-
-                        <div
-                            class="bg-slate-900 border border-slate-800 rounded-[2rem] p-6">
-
-                            <div
-                                class="flex justify-between items-center mb-5">
-
-                                <h3
-                                    class="text-sm uppercase tracking-[0.3em] text-slate-400 font-black">
-
-                                    Expiry Analytics
-
-                                </h3>
-
-                                <span
-                                    class="bg-yellow-500/10 text-yellow-400 px-3 py-1 rounded-full text-[10px] font-black uppercase">
-
-                                    Monitor
-
-                                </span>
-
-                            </div>
-
-                            <div class="h-80">
-
-                                <canvas id="expiryChart"></canvas>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-            </section>
-
-            <!-- PRODUCTS -->
-            <section id="page-products"
-                class="page-view hidden">
-
-                <div
-                    class="glass border border-slate-800 rounded-[2.8rem] p-6 md:p-8 shadow-2xl">
-
-                    <div
-                        class="flex flex-wrap gap-4 justify-between items-center mb-8">
-
-                        <div>
-
-                            <h1 class="text-4xl md:text-5xl font-black">
-                                Products
-                            </h1>
-
-                            <p
-                                class="text-xs uppercase tracking-[0.3em] text-slate-500 font-black mt-2">
-
-                                Inventory Management
-
-                            </p>
-
-                        </div>
-
-                    </div>
-
-                    <!-- SEARCH -->
-                    <div class="relative mb-6">
-
-                        <i data-lucide="search"
-                            class="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500"></i>
-
-                        <input
-                            id="search-input"
-                            oninput="renderProducts()"
-                            type="text"
-                            placeholder="Search product, barcode, category..."
-                            class="w-full bg-slate-900 border border-slate-800 rounded-3xl py-5 pl-14 pr-5 text-sm focus:border-primary transition-all">
-
-                    </div>
-
-                    <!-- FILTERS -->
-                    <div
-                        class="flex gap-3 overflow-x-auto no-scrollbar pb-2 mb-8">
-
-                        <button onclick="setFilter('all')"
-                            class="filter-chip active px-5 py-3 rounded-2xl bg-slate-900 border border-slate-800 text-xs font-black uppercase whitespace-nowrap">
-
-                            All
-
-                        </button>
-
-                        <button onclick="setFilter('expired')"
-                            class="filter-chip px-5 py-3 rounded-2xl bg-slate-900 border border-red-500/20 text-red-400 text-xs font-black uppercase whitespace-nowrap">
-
-                            Expired
-
-                        </button>
-
-                        <button onclick="setFilter('expiring')"
-                            class="filter-chip px-5 py-3 rounded-2xl bg-slate-900 border border-yellow-500/20 text-yellow-400 text-xs font-black uppercase whitespace-nowrap">
-
-                            7 Days Left
-
-                        </button>
-
-                        <button onclick="setFilter('Grains')"
-                            class="filter-chip px-5 py-3 rounded-2xl bg-slate-900 border border-slate-800 text-xs font-black uppercase whitespace-nowrap">
-
-                            Grains
-
-                        </button>
-
-                        <button onclick="setFilter('Dairy')"
-                            class="filter-chip px-5 py-3 rounded-2xl bg-slate-900 border border-slate-800 text-xs font-black uppercase whitespace-nowrap">
-
-                            Dairy
-
-                        </button>
-
-                        <button onclick="setFilter('Beverages')"
-                            class="filter-chip px-5 py-3 rounded-2xl bg-slate-900 border border-slate-800 text-xs font-black uppercase whitespace-nowrap">
-
-                            Beverages
-
-                        </button>
-
-                        <button onclick="setFilter('Snacks')"
-                            class="filter-chip px-5 py-3 rounded-2xl bg-slate-900 border border-slate-800 text-xs font-black uppercase whitespace-nowrap">
-
-                            Snacks
-
-                        </button>
-
-                        <button onclick="setFilter('Frozen')"
-                            class="filter-chip px-5 py-3 rounded-2xl bg-slate-900 border border-slate-800 text-xs font-black uppercase whitespace-nowrap">
-
-                            Frozen
-
-                        </button>
-
-                        <button onclick="setFilter('Bakery')"
-                            class="filter-chip px-5 py-3 rounded-2xl bg-slate-900 border border-slate-800 text-xs font-black uppercase whitespace-nowrap">
-
-                            Bakery
-
-                        </button>
-
-                        <button onclick="setFilter('Cleaning')"
-                            class="filter-chip px-5 py-3 rounded-2xl bg-slate-900 border border-slate-800 text-xs font-black uppercase whitespace-nowrap">
-
-                            Cleaning
-
-                        </button>
-
-                    </div>
-
-                    <!-- GRID -->
-                    <div id="product-grid"
-                        class="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6">
-                    </div>
-
-                </div>
-
-            </section>
-
-            <!-- SCANNER -->
-            <section id="page-scanner"
-                class="page-view hidden">
-
-                <div
-                    class="glass border border-slate-800 rounded-[2.8rem] p-8 shadow-2xl text-center">
-
-                    <h1 class="text-5xl font-black mb-3">
-
-                        AI Scanner
-
-                    </h1>
-
-                    <p
-                        class="text-xs uppercase tracking-[0.3em] text-slate-500 font-black mb-10">
-
-                        Smart Barcode Recognition
-
-                    </p>
-
-                    <div
-                        class="relative max-w-md mx-auto aspect-square rounded-[3rem] overflow-hidden border-4 border-primary shadow-2xl shadow-green-900/40">
-
-                        <div id="scanner-container"
-                            class="w-full h-full bg-black"></div>
-
-                        <div
-                            class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-1 bg-primary shadow-[0_0_25px_#16a34a] animate-pulse">
-                        </div>
-
-                    </div>
-
-                    <p
-                        class="mt-8 text-xs uppercase tracking-[0.3em] text-slate-500 font-black">
-
-                        Scan Any Product Barcode
-
-                    </p>
-
-                </div>
-
-            </section>
-
-            <!-- SETTINGS -->
-            <section id="page-settings"
-                class="page-view hidden">
-
-                <div
-                    class="glass border border-slate-800 rounded-[2.8rem] p-6 md:p-8 shadow-2xl">
-
-                    <div class="text-center mb-10">
-
-                        <div
-                            class="w-40 h-40 mx-auto rounded-full border-4 border-primary p-1 shadow-2xl shadow-green-900/40 mb-6">
-
-                            <img
-                                src="sabbir.jpg"
-                                onerror="this.src='https://api.dicebear.com/7.x/adventurer/svg?seed=Sabbir'"
-                                class="w-full h-full rounded-full object-cover bg-slate-900">
-
-                        </div>
-
-                        <h1 class="text-4xl font-black">
-
-                            Sabbir Hosen Akash
-
-                        </h1>
-
-                        <p
-                            class="text-primary text-xs uppercase tracking-[0.4em] font-black mt-3">
-
-                            Full Stack Developer
-
-                        </p>
-
-                    </div>
-
-                    <!-- SETTINGS -->
-                    <div class="space-y-4">
-
-                        <div
-                            class="bg-slate-900 border border-slate-800 rounded-[2rem] p-5 flex justify-between items-center">
-
-                            <div>
-
-                                <h3 class="font-black">
-                                    Dark / Light Mode
-                                </h3>
-
-                                <p
-                                    class="text-xs uppercase tracking-widest text-slate-500 font-black mt-1">
-
-                                    Theme Controller
-
-                                </p>
-
-                            </div>
-
-                            <button onclick="toggleTheme()"
-                                class="bg-primary text-black px-5 py-3 rounded-2xl font-black uppercase text-xs">
-
-                                Toggle
-
-                            </button>
-
-                        </div>
-
-                        <div
-                            class="bg-slate-900 border border-slate-800 rounded-[2rem] p-5 flex justify-between items-center">
-
-                            <div>
-
-                                <h3 class="font-black">
-                                    Cloud Sync
-                                </h3>
-
-                                <p
-                                    class="text-xs uppercase tracking-widest text-slate-500 font-black mt-1">
-
-                                    Firebase Database
-
-                                </p>
-
-                            </div>
-
-                            <span
-                                class="bg-primary/10 text-primary px-4 py-2 rounded-full text-[10px] uppercase font-black">
-
-                                Connected
-
-                            </span>
-
-                        </div>
-
-                        <div
-                            class="bg-slate-900 border border-slate-800 rounded-[2rem] p-5 flex justify-between items-center">
-
-                            <div>
-
-                                <h3 class="font-black">
-                                    Scanner Engine
-                                </h3>
-
-                                <p
-                                    class="text-xs uppercase tracking-widest text-slate-500 font-black mt-1">
-
-                                    AI Barcode System
-
-                                </p>
-
-                            </div>
-
-                            <span
-                                class="bg-green-500/10 text-green-400 px-4 py-2 rounded-full text-[10px] uppercase font-black">
-
-                                Running
-
-                            </span>
-
-                        </div>
-
-                        <div
-                            class="bg-slate-900 border border-slate-800 rounded-[2rem] p-5 flex justify-between items-center">
-
-                            <div>
-
-                                <h3 class="font-black">
-                                    Device Mode
-                                </h3>
-
-                                <p
-                                    class="text-xs uppercase tracking-widest text-slate-500 font-black mt-1">
-
-                                    Mobile + Desktop Optimized
-
-                                </p>
-
-                            </div>
-
-                            <span
-                                class="bg-blue-500/10 text-blue-400 px-4 py-2 rounded-full text-[10px] uppercase font-black">
-
-                                Responsive
-
-                            </span>
-
-                        </div>
-
-                        <button onclick="window.location.reload()"
-                            class="w-full bg-primary text-black py-5 rounded-[2rem] font-black uppercase tracking-[0.3em] shadow-2xl shadow-green-900/40 active:scale-95 transition-all mt-6">
-
-                            Restart System
-
-                        </button>
-
-                    </div>
-
-                </div>
-
-            </section>
-
         </section>
 
     </main>
 
-    <!-- MOBILE NAV -->
+    <!-- NAV -->
     <nav
-        class="xl:hidden fixed bottom-0 left-0 right-0 glass border-t border-slate-800 h-24 flex items-center justify-around z-[999]">
+        class="fixed bottom-0 left-0 right-0 bg-surface/90 backdrop-blur-xl border-t border-slate-800 h-24 flex items-center justify-around z-50">
 
         <button onclick="switchPage('dashboard')"
-            class="nav-btn flex flex-col items-center gap-1 text-primary"
-            data-page="dashboard">
+            data-page="dashboard"
+            class="nav-btn text-slate-500 flex flex-col items-center gap-1">
 
             <i data-lucide="layout-grid"></i>
 
-            <span class="text-[10px] font-black uppercase">
-                Home
+            <span class="text-xs">
+                Dashboard
             </span>
 
         </button>
 
         <button onclick="switchPage('products')"
-            class="nav-btn flex flex-col items-center gap-1 text-slate-500"
-            data-page="products">
+            data-page="products"
+            class="nav-btn text-primary flex flex-col items-center gap-1">
 
-            <i data-lucide="boxes"></i>
+            <i data-lucide="package"></i>
 
-            <span class="text-[10px] font-black uppercase">
+            <span class="text-xs">
                 Products
             </span>
 
         </button>
 
         <button onclick="switchPage('scanner')"
-            class="nav-btn flex flex-col items-center gap-1 text-slate-500"
-            data-page="scanner">
+            data-page="scanner"
+            class="nav-btn text-slate-500 flex flex-col items-center gap-1">
 
             <i data-lucide="scan-line"></i>
 
-            <span class="text-[10px] font-black uppercase">
+            <span class="text-xs">
                 Scan
             </span>
 
         </button>
 
         <button onclick="switchPage('settings')"
-            class="nav-btn flex flex-col items-center gap-1 text-slate-500"
-            data-page="settings">
+            data-page="settings"
+            class="nav-btn text-slate-500 flex flex-col items-center gap-1">
 
             <i data-lucide="settings-2"></i>
 
-            <span class="text-[10px] font-black uppercase">
+            <span class="text-xs">
                 Settings
             </span>
 
@@ -788,126 +439,190 @@
 
     </nav>
 
-    <!-- SCAN SUCCESS MODAL -->
-    <div id="scan-result-modal"
-        class="fixed inset-0 bg-black/80 backdrop-blur-md hidden items-center justify-center z-[9999] p-4">
+    <!-- ADD FORM -->
+    <div id="products-form-view"
+        class="hidden fixed inset-0 bg-darkbg z-[1000] overflow-y-auto">
 
-        <div
-            class="bg-slate-900 border border-slate-800 rounded-[2.5rem] w-full max-w-md overflow-hidden shadow-2xl">
+        <div class="max-w-3xl mx-auto p-5 md:p-10">
 
-            <div class="h-64 overflow-hidden">
+            <div
+                class="flex items-center justify-between mb-10">
 
-                <img id="scan-product-image"
-                    class="w-full h-full object-cover">
+                <h1 class="text-3xl font-black">
+                    Product Form
+                </h1>
+
+                <button onclick="closeProductForm()"
+                    class="bg-surface p-4 rounded-2xl">
+
+                    <i data-lucide="x"></i>
+
+                </button>
 
             </div>
 
-            <div class="p-6">
+            <form id="product-form"
+                onsubmit="saveProduct(event)"
+                class="space-y-5">
 
-                <div class="flex justify-between items-start mb-4">
+                <input type="hidden" id="form-id">
 
-                    <div>
+                <!-- image -->
+                <div
+                    class="bg-surface rounded-[3rem] overflow-hidden border border-slate-800">
 
-                        <span id="scan-product-category"
-                            class="bg-primary/10 text-primary px-3 py-1 rounded-full text-[10px] font-black uppercase">
-                        </span>
+                    <img id="form-img-output"
+                        class="hidden w-full h-72 object-cover">
 
-                        <h2 id="scan-product-name"
-                            class="text-3xl font-black mt-3">
-                        </h2>
-
-                    </div>
-
-                    <div
-                        class="bg-primary text-black px-3 py-2 rounded-2xl text-xs font-black uppercase">
-
-                        Found
-
-                    </div>
+                    <input type="file"
+                        accept="image/*"
+                        onchange="handleFormImage(this)"
+                        class="w-full p-10">
 
                 </div>
 
-                <div class="grid grid-cols-2 gap-4 mb-5">
+                <input id="form-name"
+                    type="text"
+                    required
+                    placeholder="Product Name"
+                    class="w-full bg-surface p-6 rounded-3xl outline-none">
 
-                    <div
-                        class="bg-slate-800 rounded-2xl p-4">
+                <div class="grid md:grid-cols-2 gap-5">
 
-                        <p
-                            class="text-[10px] uppercase text-slate-500 font-black mb-1">
+                    <input id="form-sku"
+                        type="text"
+                        required
+                        placeholder="Barcode"
+                        class="w-full bg-surface p-6 rounded-3xl outline-none">
 
-                            Stock
+                    <select id="form-category"
+                        class="w-full bg-surface p-6 rounded-3xl outline-none">
 
-                        </p>
+                        <option>Beverages</option>
+                        <option>Snacks</option>
+                        <option>Frozen</option>
+                        <option>Dairy</option>
+                        <option>Bakery</option>
+                        <option>Household</option>
 
-                        <h3 id="scan-product-stock"
-                            class="text-2xl font-black">
-                        </h3>
+                    </select>
 
-                    </div>
+                </div>
 
-                    <div
-                        class="bg-slate-800 rounded-2xl p-4">
+                <div class="grid md:grid-cols-3 gap-5">
 
-                        <p
-                            class="text-[10px] uppercase text-slate-500 font-black mb-1">
+                    <input id="form-cartons"
+                        type="number"
+                        value="1"
+                        oninput="calculateTotalPieces()"
+                        placeholder="Cartons"
+                        class="w-full bg-surface p-6 rounded-3xl outline-none">
 
-                            Expiry
+                    <input id="form-pcs-per"
+                        type="number"
+                        value="12"
+                        oninput="calculateTotalPieces()"
+                        placeholder="Pieces"
+                        class="w-full bg-surface p-6 rounded-3xl outline-none">
 
-                        </p>
+                    <input id="form-total-pcs"
+                        readonly
+                        placeholder="Total"
+                        class="w-full bg-primary/10 text-primary p-6 rounded-3xl outline-none">
 
-                        <h3 id="scan-product-expiry"
-                            class="text-sm font-black text-yellow-400">
-                        </h3>
+                </div>
 
-                    </div>
+                <div class="grid md:grid-cols-2 gap-5">
+
+                    <input id="form-carton-price"
+                        type="number"
+                        step="0.01"
+                        oninput="calculatePrices('carton')"
+                        placeholder="Carton Price"
+                        class="w-full bg-surface p-6 rounded-3xl outline-none">
+
+                    <input id="form-piece-price"
+                        type="number"
+                        step="0.01"
+                        oninput="calculatePrices('piece')"
+                        placeholder="Piece Price"
+                        class="w-full bg-surface p-6 rounded-3xl outline-none">
+
+                </div>
+
+                <input id="form-expiry"
+                    type="date"
+                    required
+                    class="w-full bg-surface p-6 rounded-3xl outline-none">
+
+                <button
+                    class="w-full bg-primary text-black font-black py-6 rounded-3xl text-xl">
+
+                    Save Product
+
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+    <!-- SCAN RESULT -->
+    <div id="scan-result-modal"
+        class="hidden fixed inset-0 bg-black/80 backdrop-blur-xl z-[2000] items-center justify-center p-4">
+
+        <div
+            class="bg-surface max-w-md w-full rounded-[3rem] overflow-hidden border border-slate-800">
+
+            <img id="scan-product-image"
+                class="w-full h-72 object-cover">
+
+            <div class="p-6 space-y-4">
+
+                <div>
+
+                    <h1 id="scan-product-name"
+                        class="text-3xl font-black">
+                    </h1>
+
+                    <p id="scan-product-category"
+                        class="text-primary mt-1">
+                    </p>
 
                 </div>
 
                 <div class="space-y-3 text-sm">
 
-                    <div
-                        class="flex justify-between bg-slate-800 rounded-2xl px-4 py-3">
-
-                        <span class="text-slate-400">
-                            Barcode
-                        </span>
-
-                        <span id="scan-product-sku"
-                            class="font-black">
-                        </span>
-
+                    <div class="flex justify-between">
+                        <span>Barcode</span>
+                        <span id="scan-product-sku"></span>
                     </div>
 
-                    <div
-                        class="flex justify-between bg-slate-800 rounded-2xl px-4 py-3">
-
-                        <span class="text-slate-400">
-                            Carton Price
-                        </span>
-
-                        <span id="scan-product-carton"
-                            class="font-black text-primary">
-                        </span>
-
+                    <div class="flex justify-between">
+                        <span>Stock</span>
+                        <span id="scan-product-stock"></span>
                     </div>
 
-                    <div
-                        class="flex justify-between bg-slate-800 rounded-2xl px-4 py-3">
+                    <div class="flex justify-between">
+                        <span>Expiry</span>
+                        <span id="scan-product-expiry"></span>
+                    </div>
 
-                        <span class="text-slate-400">
-                            Piece Price
-                        </span>
+                    <div class="flex justify-between">
+                        <span>Carton Price</span>
+                        <span id="scan-product-carton"></span>
+                    </div>
 
-                        <span id="scan-product-piece"
-                            class="font-black text-primary">
-                        </span>
-
+                    <div class="flex justify-between">
+                        <span>Piece Price</span>
+                        <span id="scan-product-piece"></span>
                     </div>
 
                 </div>
 
                 <button onclick="closeScanModal()"
-                    class="w-full bg-primary text-black py-5 rounded-2xl font-black uppercase tracking-[0.2em] mt-6">
+                    class="w-full bg-primary text-black py-5 rounded-2xl font-black">
 
                     Close
 
@@ -919,19 +634,9 @@
 
     </div>
 
-    <!-- SCAN SOUND -->
-    <audio id="scan-sound">
-
-        <source
-            src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"
-            type="audio/mpeg">
-
-    </audio>
-
-    <!-- APP -->
+    <!-- JS -->
     <script src="app.js"></script>
 
-    <!-- ICON -->
     <script>
         lucide.createIcons();
     </script>
