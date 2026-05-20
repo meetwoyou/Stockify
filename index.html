@@ -2,8 +2,12 @@
 <html lang="en" class="dark">
 
 <head>
+
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
     <title>Stockify Pro Ultra</title>
 
     <!-- TAILWIND -->
@@ -18,8 +22,9 @@
     <!-- CHART -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <!-- FIREBASE (optional) -->
+    <!-- FIREBASE -->
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
 
     <script>
@@ -28,7 +33,9 @@
             theme: {
                 extend: {
                     colors: {
-                        primary: "#16a34a"
+                        primary: "#16a34a",
+                        darkBg: "#020617",
+                        surface: "#0f172a"
                     }
                 }
             }
@@ -36,178 +43,307 @@
     </script>
 
     <style>
-        * { -webkit-tap-highlight-color: transparent; }
-        body { font-family: sans-serif; background:#020617; }
+        * {
+            -webkit-tap-highlight-color: transparent;
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: Inter, sans-serif;
+            background: #020617;
+        }
 
         .glass {
-            background: rgba(15,23,42,.75);
-            backdrop-filter: blur(20px);
+            background: rgba(15, 23, 42, .75);
+            backdrop-filter: blur(22px);
         }
 
-        .page-view { animation: fade .3s ease; }
+        .page-view {
+            animation: fade .35s ease;
+        }
 
         @keyframes fade {
-            from { opacity:0; transform:translateY(10px); }
-            to { opacity:1; transform:translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
-        .no-scrollbar::-webkit-scrollbar { display:none; }
-
-        .desktop-layout {
-            display: grid;
-            grid-template-columns: 320px 1fr;
-            gap: 24px;
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
         }
 
-        @media(max-width: 1200px){
-            .desktop-layout { grid-template-columns: 1fr; }
+        .filter-chip.active {
+            background: #16a34a;
+            border-color: #16a34a;
+            color: white;
+        }
+
+        .card-hover {
+            transition: .25s ease;
+        }
+
+        .card-hover:hover {
+            transform: translateY(-5px);
+        }
+
+        input,
+        select,
+        textarea {
+            outline: none;
+        }
+
+        @media(min-width:1200px) {
+
+            .desktop-layout {
+                display: grid;
+                grid-template-columns: 320px 1fr;
+                gap: 30px;
+            }
+
         }
     </style>
+
 </head>
 
-<body class="text-white min-h-screen pb-24">
+<body class="text-white min-h-screen pb-28">
 
-<main class="max-w-[1700px] mx-auto p-4 md:p-8 desktop-layout">
+    <main class="max-w-[1800px] mx-auto p-4 md:p-8 desktop-layout">
 
-<!-- SIDEBAR -->
-<aside class="hidden xl:block">
-    <div class="glass p-6 rounded-3xl border border-slate-800 sticky top-6">
+        <!-- SIDEBAR -->
+        <aside class="hidden xl:block">
 
-        <h1 class="text-2xl font-black">Stockify Pro</h1>
+            <div
+                class="glass border border-slate-800 rounded-[2.5rem] p-8 sticky top-8 shadow-2xl">
 
-        <div class="mt-6 space-y-3">
+                <div class="flex items-center gap-4 mb-12">
 
-            <button onclick="switchPage('dashboard')" data-page="dashboard" class="nav-btn w-full p-4 bg-green-500/10 text-green-400 rounded-xl">
-                Dashboard
-            </button>
+                    <div
+                        class="w-16 h-16 rounded-3xl bg-primary flex items-center justify-center shadow-2xl shadow-green-900/40">
 
-            <button onclick="switchPage('products')" data-page="products" class="nav-btn w-full p-4 text-slate-400">
-                Products
-            </button>
+                        <i data-lucide="package" class="w-8 h-8"></i>
 
-            <button onclick="switchPage('scanner')" data-page="scanner" class="nav-btn w-full p-4 text-slate-400">
-                Scanner
-            </button>
+                    </div>
 
-            <button onclick="switchPage('settings')" data-page="settings" class="nav-btn w-full p-4 text-slate-400">
-                Settings
-            </button>
+                    <div>
 
-        </div>
+                        <h1 class="text-3xl font-black">
+                            Stockify
+                        </h1>
 
-    </div>
-</aside>
+                        <p
+                            class="text-xs uppercase tracking-[0.35em] text-slate-500 font-black mt-1">
 
-<!-- MAIN -->
-<section class="space-y-6">
+                            PRO ULTRA
 
-<!-- DASHBOARD -->
-<section id="page-dashboard" class="page-view">
+                        </p>
 
-    <div class="glass p-6 rounded-3xl border border-slate-800">
+                    </div>
 
-        <div class="flex justify-between items-center">
-            <h1 class="text-3xl font-black">Dashboard</h1>
+                </div>
 
-            <button onclick="openAddProductForm()" class="bg-green-500 text-black px-5 py-3 rounded-xl font-bold">
-                + Add Product
-            </button>
-        </div>
+                <div class="space-y-3">
 
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+                    <button onclick="switchPage('dashboard')"
+                        class="nav-btn w-full flex items-center gap-4 px-5 py-5 rounded-2xl bg-primary/10 border border-primary/20 text-primary font-black uppercase text-xs"
+                        data-page="dashboard">
 
-            <div class="bg-slate-900 p-4 rounded-xl">
-                <p>Total</p>
-                <h2 id="dash-total" class="text-2xl font-black">0</h2>
+                        <i data-lucide="layout-grid"></i>
+
+                        Dashboard
+
+                    </button>
+
+                    <button onclick="switchPage('products')"
+                        class="nav-btn w-full flex items-center gap-4 px-5 py-5 rounded-2xl text-slate-400 font-black uppercase text-xs"
+                        data-page="products">
+
+                        <i data-lucide="boxes"></i>
+
+                        Products
+
+                    </button>
+
+                    <button onclick="switchPage('scanner')"
+                        class="nav-btn w-full flex items-center gap-4 px-5 py-5 rounded-2xl text-slate-400 font-black uppercase text-xs"
+                        data-page="scanner">
+
+                        <i data-lucide="scan-line"></i>
+
+                        AI Scanner
+
+                    </button>
+
+                    <button onclick="switchPage('settings')"
+                        class="nav-btn w-full flex items-center gap-4 px-5 py-5 rounded-2xl text-slate-400 font-black uppercase text-xs"
+                        data-page="settings">
+
+                        <i data-lucide="settings-2"></i>
+
+                        Settings
+
+                    </button>
+
+                </div>
+
             </div>
 
-        </div>
+        </aside>
 
-        <div class="grid md:grid-cols-2 gap-4 mt-6">
+        <!-- CONTENT -->
+        <section class="space-y-6">
 
-            <canvas id="stockChart"></canvas>
-            <canvas id="expiryChart"></canvas>
+            <!-- DASHBOARD -->
+            <section id="page-dashboard" class="page-view">
 
-        </div>
+                <div
+                    class="glass border border-slate-800 rounded-[2.8rem] p-6 md:p-8 shadow-2xl">
 
-    </div>
+                    <div class="flex flex-wrap gap-4 justify-between items-center mb-8">
 
-</section>
+                        <div>
 
-<!-- PRODUCTS -->
-<section id="page-products" class="page-view hidden">
+                            <h1 class="text-4xl md:text-5xl font-black">
+                                Dashboard
+                            </h1>
 
-    <div class="glass p-6 rounded-3xl border border-slate-800">
+                            <p
+                                class="text-xs uppercase tracking-[0.3em] text-slate-500 font-black mt-2">
 
-        <h1 class="text-3xl font-black mb-4">Products</h1>
+                                Smart Analytics System
 
-        <input id="search-input" oninput="renderProducts()" class="w-full p-4 rounded-xl bg-slate-900" placeholder="Search..." />
+                            </p>
 
-        <div id="product-grid" class="grid md:grid-cols-2 xl:grid-cols-3 gap-4 mt-6"></div>
+                        </div>
 
-    </div>
+                        <button onclick="openAddProductForm()"
+                            class="bg-primary text-black px-6 py-5 rounded-3xl font-black uppercase text-xs tracking-[0.2em] shadow-2xl shadow-green-900/40 active:scale-95 transition-all">
 
-</section>
+                            + Add Product
 
-<!-- SCANNER -->
-<section id="page-scanner" class="page-view hidden">
+                        </button>
 
-    <div class="glass p-6 rounded-3xl border border-slate-800 text-center">
+                    </div>
 
-        <h1 class="text-3xl font-black mb-4">Scanner</h1>
+                    <!-- STATS -->
+                    <div
+                        class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
 
-        <div id="scanner-container" class="w-full max-w-md mx-auto bg-black rounded-2xl overflow-hidden"></div>
+                        <div
+                            class="bg-slate-900 border border-slate-800 rounded-[2rem] p-6">
 
-    </div>
+                            <div class="flex justify-between mb-3">
 
-</section>
+                                <i data-lucide="package"
+                                    class="text-primary"></i>
 
-<!-- SETTINGS -->
-<section id="page-settings" class="page-view hidden">
+                                <span
+                                    class="text-[10px] uppercase text-slate-500 font-black">
 
-    <div class="glass p-6 rounded-3xl border border-slate-800 text-center">
+                                    Total
 
-        <img src="sabbir.jpg"
-             onerror="this.src='https://api.dicebear.com/7.x/adventurer/svg?seed=Sabbir'"
-             class="w-32 h-32 mx-auto rounded-full">
+                                </span>
 
-        <h1 class="text-2xl font-black mt-4">
-            Sabbir Hosen Akash
-        </h1>
+                            </div>
 
-        <button onclick="toggleTheme()" class="mt-4 bg-green-500 text-black px-5 py-3 rounded-xl">
-            Dark / Light
-        </button>
+                            <h2 id="dash-total"
+                                class="text-4xl font-black">
+                                0
+                            </h2>
 
-    </div>
+                        </div>
 
-</section>
+                        <div
+                            class="bg-red-500/10 border border-red-500/20 rounded-[2rem] p-6">
 
-</section>
+                            <div class="flex justify-between mb-3">
 
-</main>
+                                <i data-lucide="alert-triangle"
+                                    class="text-red-400"></i>
 
-<!-- MOBILE NAV -->
-<nav class="xl:hidden fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-800 flex justify-around p-3">
+                                <span
+                                    class="text-[10px] uppercase text-red-400 font-black">
 
-    <button onclick="switchPage('dashboard')">Home</button>
-    <button onclick="switchPage('products')">Products</button>
-    <button onclick="switchPage('scanner')">Scan</button>
-    <button onclick="switchPage('settings')">Settings</button>
+                                    Expired
 
-</nav>
+                                </span>
 
-<!-- MODAL PLACEHOLDER (JS will inject) -->
+                            </div>
 
-<!-- APP JS -->
-<script src="app.js"></script>
+                            <h2 id="dash-expired"
+                                class="text-4xl font-black text-red-400">
+                                0
+                            </h2>
 
-<script>
-    lucide.createIcons();
-</script>
+                        </div>
 
-</body>
-</html>                                    class="text-sm uppercase tracking-[0.3em] text-slate-400 font-black">
+                        <div
+                            class="bg-yellow-500/10 border border-yellow-500/20 rounded-[2rem] p-6">
+
+                            <div class="flex justify-between mb-3">
+
+                                <i data-lucide="clock-3"
+                                    class="text-yellow-400"></i>
+
+                                <span
+                                    class="text-[10px] uppercase text-yellow-400 font-black">
+
+                                    7 Days
+
+                                </span>
+
+                            </div>
+
+                            <h2 id="dash-expiring"
+                                class="text-4xl font-black text-yellow-400">
+                                0
+                            </h2>
+
+                        </div>
+
+                        <div
+                            class="bg-primary/10 border border-primary/20 rounded-[2rem] p-6">
+
+                            <div class="flex justify-between mb-3">
+
+                                <i data-lucide="layers-3"
+                                    class="text-primary"></i>
+
+                                <span
+                                    class="text-[10px] uppercase text-primary font-black">
+
+                                    Categories
+
+                                </span>
+
+                            </div>
+
+                            <h2 id="dash-category"
+                                class="text-4xl font-black text-primary">
+                                0
+                            </h2>
+
+                        </div>
+
+                    </div>
+
+                    <!-- CHARTS -->
+                    <div
+                        class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+
+                        <div
+                            class="bg-slate-900 border border-slate-800 rounded-[2rem] p-6">
+
+                            <div
+                                class="flex justify-between items-center mb-5">
+
+                                <h3
+                                    class="text-sm uppercase tracking-[0.3em] text-slate-400 font-black">
 
                                     Category Analytics
 
