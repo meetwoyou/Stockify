@@ -1,4 +1,9 @@
-// === ১. কনফিগারেশন এবং ইনিশিয়ালাইজেশন ===
+/**
+ * STOCKIFY PRO - ADVANCED HYBRID ENGINE
+ * Developed for: Sabbir Hosen Akash
+ */
+
+// === 1. CONFIGURATION ===
 const firebaseConfig = {
     apiKey: "AIzaSyBn3x2qSo8k6a9wrxNfLmVliWMmsUk8wfY",
     authDomain: "meetwoyou-436a2.firebaseapp.com",
@@ -8,11 +13,9 @@ const firebaseConfig = {
     appId: "1:612788132077:web:0a8b92edf26778efd4d4e4"
 };
 
-// Firebase Initialize
 if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 const firestore = firebase.firestore();
 
-// Cloudinary Settings
 const CLOUDINARY_URL = 'https://api.cloudinary.com/v1_1/dpgawb5sl/image/upload';
 const CLOUDINARY_PRESET = 'Meetwoyou';
 
@@ -21,25 +24,19 @@ let localProducts = [];
 let scanner = null;
 let compressedBase64 = null;
 
-// === ২. ডাটাবেস এবং সিঙ্ক ইঞ্জিন ===
+// === 2. DATABASE & SYNC ===
 const initLocalDB = () => {
     return new Promise((resolve) => {
-        const request = indexedDB.open('StockifyDB_v2', 1);
+        const request = indexedDB.open('StockifyDB_Final', 1);
         request.onupgradeneeded = (e) => {
             const db = e.target.result;
-            if (!db.objectStoreNames.contains('products')) {
-                db.createObjectStore('products', { keyPath: 'id' });
-            }
+            if (!db.objectStoreNames.contains('products')) db.createObjectStore('products', { keyPath: 'id' });
         };
-        request.onsuccess = (e) => { 
-            localDB = e.target.result; 
-            resolve(); 
-        };
+        request.onsuccess = (e) => { localDB = e.target.result; resolve(); };
     });
 };
 
 window.syncData = async () => {
-    // লোকালাইজড ডাটা লোড
     const tx = localDB.transaction('products', 'readonly');
     const store = tx.objectStore('products');
     store.getAll().onsuccess = async (e) => {
@@ -47,22 +44,19 @@ window.syncData = async () => {
         renderDashboard();
         renderProducts();
 
-        // ক্লাউড ব্যাকআপ থেকে লেটেস্ট ডাটা আনা
         try {
             const snapshot = await firestore.collection('stockify_products').get();
             const cloudData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            
             const updateTx = localDB.transaction('products', 'readwrite');
             cloudData.forEach(p => updateTx.objectStore('products').put(p));
-            
             localProducts = cloudData;
             renderDashboard();
             renderProducts();
-        } catch (err) { console.log("Cloud sync paused (Offline)"); }
+        } catch (err) { console.log("Cloud sync offline"); }
     };
 };
 
-// === ৩. ইমেজ প্রসেসিং (Compression 200-300kb) ===
+// === 3. IMAGE COMPRESSION (Target 200-300kb) ===
 window.compressImage = (file) => {
     return new Promise((resolve) => {
         const reader = new FileReader();
@@ -72,53 +66,29 @@ window.compressImage = (file) => {
             img.src = event.target.result;
             img.onload = () => {
                 const canvas = document.createElement('canvas');
+                const MAX_WIDTH = 800;
                 let width = img.width;
                 let height = img.height;
-                const max_size = 800;
 
-                if (width > height && width > max_size) {
-                    height *= max_size / width;
-                    width = max_size;
-                } else if (height > max_size) {
-                    width *= max_size / height;
-                    height = max_size;
+                if (width > MAX_WIDTH) {
+                    height *= MAX_WIDTH / width;
+                    width = MAX_WIDTH;
                 }
                 canvas.width = width;
                 canvas.height = height;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
-                resolve(canvas.toDataURL('image/jpeg', 0.7)); // 70% Quality for compression
+                resolve(canvas.toDataURL('image/jpeg', 0.7)); // 0.7 Quality for 200-300kb
             };
         };
     });
 };
 
-window.handleFormImage = async (input) => {
-    if (input.files && input.files[0]) {
-        compressedBase64 = await compressImage(input.files[0]);
-        const output = document.getElementById('form-img-output');
-        output.src = compressedBase64;
-        output.classList.remove('hidden');
-        document.getElementById('image-placeholder').classList.add('hidden');
-    }
-};
-
-window.removeFormImage = () => {
-    compressedBase64 = null;
-    document.getElementById('form-img-output').src = '';
-    document.getElementById('form-img-output').classList.add('hidden');
-    document.getElementById('image-placeholder').classList.remove('hidden');
-};
-
-// === ৪. নেভিগেশন এবং UI কন্ট্রোল ===
+// === 4. GLOBAL NAVIGATION & UI ===
 window.switchPage = (pageId) => {
     document.querySelectorAll('.page-view').forEach(p => p.classList.add('hidden'));
-    document.getElementById(`page-${pageId}`).classList.remove('hidden');
-    
-    document.querySelectorAll('.mobile-nav-btn, .nav-btn').forEach(btn => {
-        const isTarget = btn.getAttribute('data-page') === pageId;
-        btn.style.color = isTarget ? '#16a34a' : '#94a3b8';
-    });
+    const target = document.getElementById(`page-${pageId}`);
+    if(target) target.classList.remove('hidden');
 
     if (pageId === 'scanner') startScanner();
     else if (scanner) { scanner.stop(); scanner = null; }
@@ -126,13 +96,34 @@ window.switchPage = (pageId) => {
     lucide.createIcons();
 };
 
+window.handleFormImage = async (input) => {
+    if (input.files && input.files[0]) {
+        compressedBase64 = await compressImage(input.files[0]);
+        const output = document.getElementById('form-img-output');
+        if(output) {
+            output.src = compressedBase64;
+            output.classList.remove('hidden');
+        }
+        const placeholder = document.getElementById('image-placeholder');
+        if(placeholder) placeholder.classList.add('hidden');
+    }
+};
+
 window.openAddProductForm = (sku = '') => {
-    document.getElementById('products-list-view').classList.add('hidden');
-    document.getElementById('products-form-view').classList.remove('hidden');
+    const list = document.getElementById('products-list-view');
+    const form = document.getElementById('products-form-view');
+    if(list) list.classList.add('hidden');
+    if(form) form.classList.remove('hidden');
+    
     document.getElementById('product-form').reset();
     document.getElementById('form-id').value = '';
     document.getElementById('form-sku').value = sku;
-    removeFormImage();
+    
+    const output = document.getElementById('form-img-output');
+    if(output) { output.src = ''; output.classList.add('hidden'); }
+    const placeholder = document.getElementById('image-placeholder');
+    if(placeholder) placeholder.classList.remove('hidden');
+    compressedBase64 = null;
 };
 
 window.closeProductForm = () => {
@@ -140,7 +131,7 @@ window.closeProductForm = () => {
     document.getElementById('products-list-view').classList.remove('hidden');
 };
 
-// === ৫. ক্যালকুলেশন এবং CRUD ===
+// === 5. CALCULATION & CRUD ===
 window.calculateTotalPieces = () => {
     const cartons = parseInt(document.getElementById('form-cartons').value) || 0;
     const perCtn = parseInt(document.getElementById('form-pcs-per').value) || 1;
@@ -161,19 +152,19 @@ window.calculatePrices = (source) => {
 
 window.saveProduct = async (e) => {
     e.preventDefault();
-    const saveBtn = document.getElementById('save-btn');
-    saveBtn.innerText = "Syncing..."; saveBtn.disabled = true;
+    const btn = document.getElementById('save-btn');
+    btn.innerText = "Syncing..."; btn.disabled = true;
 
     try {
-        let finalImageUrl = document.getElementById('form-img-output').src;
+        let finalUrl = document.getElementById('form-img-output').src;
 
         if (compressedBase64) {
-            const formData = new FormData();
-            formData.append('file', compressedBase64);
-            formData.append('upload_preset', CLOUDINARY_PRESET);
-            const res = await fetch(CLOUDINARY_URL, { method: 'POST', body: formData });
+            const fd = new FormData();
+            fd.append('file', compressedBase64);
+            fd.append('upload_preset', CLOUDINARY_PRESET);
+            const res = await fetch(CLOUDINARY_URL, { method: 'POST', body: fd });
             const data = await res.json();
-            finalImageUrl = data.secure_url;
+            finalUrl = data.secure_url;
         }
 
         const id = document.getElementById('form-id').value || Date.now().toString();
@@ -188,48 +179,42 @@ window.saveProduct = async (e) => {
             cartonPrice: document.getElementById('form-carton-price').value,
             piecePrice: document.getElementById('form-piece-price').value,
             expiryDate: document.getElementById('form-expiry').value,
-            image: finalImageUrl,
+            image: finalUrl,
             updatedAt: Date.now()
         };
 
-        // Local & Cloud Save
         const tx = localDB.transaction('products', 'readwrite');
         tx.objectStore('products').put(product);
         await firestore.collection('stockify_products').doc(id).set(product);
 
         closeProductForm();
         syncData();
-    } catch (err) {
-        alert("Sync Failed: " + err.message);
-    } finally {
-        saveBtn.innerText = "Save & Cloud Backup"; saveBtn.disabled = false;
-    }
+    } catch (err) { alert(err.message); }
+    finally { btn.innerText = "Save & Cloud Backup"; btn.disabled = false; }
 };
 
-// === ৬. রেন্ডারিং এবং ফিল্টারিং ===
+// === 6. RENDER ENGINE ===
 window.renderProducts = (filter = 'all') => {
     const grid = document.getElementById('product-grid');
     const search = document.getElementById('search-input').value.toLowerCase();
     const today = new Date();
 
     let filtered = localProducts.filter(p => p.name.toLowerCase().includes(search) || p.sku.includes(search));
-    
-    if (filter === 'expired') {
-        filtered = filtered.filter(p => new Date(p.expiryDate) < today);
-    }
+    if (filter === 'expired') filtered = filtered.filter(p => new Date(p.expiryDate) < today);
 
     grid.innerHTML = filtered.map(p => {
-        const isExpired = new Date(p.expiryDate) < today;
+        const isExp = new Date(p.expiryDate) < today;
         return `
-        <div class="bg-white dark:bg-slate-800 p-4 rounded-[2.5rem] border-2 ${isExpired ? 'border-red-500 shadow-lg shadow-red-500/10' : 'border-transparent'} relative transition-all">
+        <div class="bg-white dark:bg-slate-800 p-4 rounded-[2.5rem] border-2 ${isExp ? 'border-red-500 bg-red-50/10' : 'border-transparent'} shadow-sm relative">
             <div class="h-32 rounded-3xl overflow-hidden mb-3">
                 <img src="${p.image}" class="w-full h-full object-cover">
+                ${isExp ? '<div class="absolute top-6 right-6 bg-red-600 text-[8px] text-white px-2 py-1 rounded-full font-black">EXPIRED</div>' : ''}
             </div>
             <h4 class="font-black text-sm uppercase truncate">${p.name}</h4>
-            <p class="text-[10px] font-bold text-slate-400 mb-2">Barcode: ${p.sku}</p>
-            <div class="flex justify-between border-t border-slate-100 dark:border-slate-700 pt-2">
-                <span class="text-xs font-black text-primary">${p.totalPieces} Pcs</span>
-                <span class="text-xs font-black text-slate-900 dark:text-white">${p.piecePrice} SAR</span>
+            <div class="flex justify-between mt-1"><span class="text-[9px] font-bold text-slate-400">Barcode: ${p.sku}</span> <span class="text-[10px] font-black text-green-600">${p.totalPieces} Pcs</span></div>
+            <div class="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-slate-100 dark:border-slate-700">
+                <div class="text-[9px] font-bold">Ctn: ${p.cartonPrice}</div>
+                <div class="text-[9px] font-bold">Pcs: ${p.piecePrice}</div>
             </div>
             <div class="flex gap-2 mt-4">
                 <button onclick="editProductTrigger('${p.id}')" class="flex-1 bg-slate-100 dark:bg-slate-700 py-2 rounded-xl text-[10px] font-black">EDIT</button>
@@ -252,7 +237,7 @@ window.renderDashboard = () => {
     document.getElementById('dash-expired').innerText = expCount;
 };
 
-// === ৭. স্মার্ট স্ক্যানার এবং মডাল ===
+// === 7. SMART SCANNER ===
 window.startScanner = () => {
     scanner = new Html5Qrcode("scanner-container");
     scanner.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, (decoded) => {
@@ -262,40 +247,35 @@ window.startScanner = () => {
             showProductModal(match);
         } else {
             scanner.stop();
-            if(confirm("New Barcode: " + decoded + "\nAdd this to inventory?")) {
+            if(confirm("Barcode: " + decoded + "\nProduct not found. Add now?")) {
                 openAddProductForm(decoded);
-            } else {
-                startScanner();
-            }
+            } else { startScanner(); }
         }
-    }).catch(err => console.error("Camera Error", err));
+    });
 };
 
 function showProductModal(p) {
     const modal = document.getElementById('details-modal');
+    if(!modal) return;
     modal.classList.remove('hidden');
     modal.classList.add('flex');
     modal.innerHTML = `
     <div class="bg-white dark:bg-slate-800 p-8 rounded-[3.5rem] w-full max-w-sm shadow-2xl animate-in zoom-in-95">
-        <img src="${p.image}" class="w-full h-48 object-cover rounded-[2.5rem] mb-6">
-        <h2 class="text-2xl font-black uppercase mb-1">${p.name}</h2>
-        <p class="text-primary font-black text-lg mb-4">${p.piecePrice} SAR / Piece</p>
-        <div class="grid grid-cols-2 gap-4 text-[10px] font-black uppercase text-slate-400 mb-8 tracking-widest">
-            <div class="bg-slate-50 dark:bg-slate-900 p-3 rounded-2xl text-center">
-                <p>Stock</p><p class="text-slate-900 dark:text-white text-sm">${p.totalPieces} Pcs</p>
-            </div>
-            <div class="bg-slate-50 dark:bg-slate-900 p-3 rounded-2xl text-center">
-                <p>Expiry</p><p class="${new Date(p.expiryDate) < new Date() ? 'text-red-500' : 'text-slate-900 dark:text-white'} text-sm">${p.expiryDate}</p>
-            </div>
+        <img src="${p.image}" class="w-full h-40 object-cover rounded-3xl mb-6">
+        <h2 class="text-xl font-black uppercase">${p.name}</h2>
+        <p class="text-primary font-black text-lg mb-4">Price: ${p.piecePrice} SAR</p>
+        <div class="grid grid-cols-2 gap-4 text-[10px] font-black uppercase text-slate-400 mb-6">
+            <div class="bg-slate-50 dark:bg-slate-900 p-3 rounded-2xl">Stock: <span class="text-slate-900 dark:text-white">${p.totalPieces}</span></div>
+            <div class="bg-slate-50 dark:bg-slate-900 p-3 rounded-2xl">Exp: <span class="${new Date(p.expiryDate) < new Date() ? 'text-red-500' : 'text-slate-900 dark:text-white'}">${p.expiryDate}</span></div>
         </div>
-        <div class="flex gap-3">
+        <div class="flex gap-2">
             <button onclick="document.getElementById('details-modal').classList.add('hidden')" class="flex-1 py-4 bg-slate-100 dark:bg-slate-700 rounded-2xl font-black text-xs">CLOSE</button>
             <button onclick="document.getElementById('details-modal').classList.add('hidden'); editProductTrigger('${p.id}')" class="flex-1 py-4 bg-primary text-white rounded-2xl font-black text-xs">EDIT</button>
         </div>
     </div>`;
 }
 
-// === ৮. এডিট ও ডিলিট ===
+// === 8. EDIT & DELETE ===
 window.editProductTrigger = (id) => {
     const p = localProducts.find(x => x.id === id);
     if (!p) return;
@@ -310,13 +290,14 @@ window.editProductTrigger = (id) => {
     document.getElementById('form-carton-price').value = p.cartonPrice;
     document.getElementById('form-piece-price').value = p.piecePrice;
     document.getElementById('form-expiry').value = p.expiryDate;
-    document.getElementById('form-img-output').src = p.image;
-    document.getElementById('form-img-output').classList.remove('hidden');
+    const output = document.getElementById('form-img-output');
+    output.src = p.image;
+    output.classList.remove('hidden');
     document.getElementById('image-placeholder').classList.add('hidden');
 };
 
 window.deleteProductTrigger = async (id) => {
-    if (confirm("Are you sure you want to delete this product from Cloud & Local?")) {
+    if (confirm("Delete permanently?")) {
         const tx = localDB.transaction('products', 'readwrite');
         tx.objectStore('products').delete(id);
         await firestore.collection('stockify_products').doc(id).delete();
@@ -325,17 +306,11 @@ window.deleteProductTrigger = async (id) => {
 };
 
 window.toggleTheme = () => {
-    const html = document.documentElement;
-    if (html.classList.contains('dark')) {
-        html.classList.remove('dark');
-        localStorage.setItem('theme', 'light');
-    } else {
-        html.classList.add('dark');
-        localStorage.setItem('theme', 'dark');
-    }
+    document.documentElement.classList.toggle('dark');
+    localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
 };
 
-// === ৯. অ্যাপ শুরু ===
+// === 9. INIT ===
 document.addEventListener('DOMContentLoaded', async () => {
     if (localStorage.getItem('theme') === 'dark') document.documentElement.classList.add('dark');
     await initLocalDB();
