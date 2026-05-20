@@ -1,9 +1,12 @@
 /**
- * STOCKIFY PRO - ULTIMATE HYBRID ENGINE
- * Developed for: Sabbir Hosen Akash
+ * STOCKIFY PRO - ULTIMATE WEB APP ENGINE
+ * Optimized for Mobile + Desktop
  */
 
-// === 1. CONFIGURATION (FIREBASE & CLOUDINARY) ===
+// ============================
+// FIREBASE CONFIG
+// ============================
+
 const firebaseConfig = {
     apiKey: "AIzaSyBn3x2qSo8k6a9wrxNfLmVliWMmsUk8wfY",
     authDomain: "meetwoyou-436a2.firebaseapp.com",
@@ -13,298 +16,1046 @@ const firebaseConfig = {
     appId: "1:612788132077:web:0a8b92edf26778efd4d4e4"
 };
 
-// Initialize Firebase with protection
 if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
+
 const firestore = firebase.firestore();
 
-// Cloudinary Configuration
-const CLOUDINARY_URL = 'https://api.cloudinary.com/v1_1/dpgawb5sl/image/upload';
-const CLOUDINARY_PRESET = 'Meetwoyou';
+// ============================
+// CLOUDINARY
+// ============================
 
-// Global State
+const CLOUDINARY_URL =
+    "https://api.cloudinary.com/v1_1/dpgawb5sl/image/upload";
+
+const CLOUDINARY_PRESET = "Meetwoyou";
+
+// ============================
+// GLOBALS
+// ============================
+
 let localDB;
 let localProducts = [];
+let currentFilter = "all";
 let scannerInstance = null;
-let currentFilter = 'all';
+let stockChart = null;
 
-// === 2. HYBRID STORAGE ENGINE (IndexedDB + Firebase) ===
+// ============================
+// INDEXED DB
+// ============================
+
 const initLocalDB = () => {
     return new Promise((resolve, reject) => {
-        const request = indexedDB.open('Stockify_Akash_v3', 1);
-        request.onupgradeneeded = (e) => {
+        const request = indexedDB.open("Stockify_Pro_DB", 1);
+
+        request.onupgradeneeded = e => {
             const db = e.target.result;
-            if (!db.objectStoreNames.contains('products')) {
-                db.createObjectStore('products', { keyPath: 'id' });
+
+            if (!db.objectStoreNames.contains("products")) {
+                db.createObjectStore("products", {
+                    keyPath: "id"
+                });
             }
         };
-        request.onsuccess = (e) => { localDB = e.target.result; resolve(); };
-        request.onerror = (e) => reject(e.target.error);
+
+        request.onsuccess = e => {
+            localDB = e.target.result;
+            resolve();
+        };
+
+        request.onerror = e => reject(e);
     });
 };
 
-// Advanced Hybrid Sync: Local First -> Cloud Backup
+// ============================
+// SYNC DATA
+// ============================
+
 window.syncData = async () => {
     try {
-        // 1. Get Local Data first for instant UI
-        const tx = localDB.transaction('products', 'readonly');
-        const store = tx.objectStore('products');
-        const request = store.getAll();
+        const tx = localDB.transaction("products", "readonly");
+        const store = tx.objectStore("products");
 
-        request.onsuccess = async () => {
-            localProducts = request.result;
-            renderDashboard();
+        const req = store.getAll();
+
+        req.onsuccess = async () => {
+            localProducts = req.result || [];
+
             renderProducts();
+            renderDashboard();
+            renderChart();
 
-            // 2. Fetch from Cloud Background
             try {
-                const snapshot = await firestore.collection('stockify_products').get();
-                const cloudData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                
-                // Update local with cloud data (Master Sync)
-                const updateTx = localDB.transaction('products', 'readwrite');
-                const updateStore = updateTx.objectStore('products');
-                
-                // Optimized merge
+                const snapshot = await firestore
+                    .collection("stockify_products")
+                    .get();
+
+                const cloudData = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+
+                const updateTx = localDB.transaction(
+                    "products",
+                    "readwrite"
+                );
+
+                const updateStore =
+                    updateTx.objectStore("products");
+
                 cloudData.forEach(p => updateStore.put(p));
-                
-                // Final render
+
                 localProducts = cloudData;
-                renderDashboard();
+
                 renderProducts();
-            } catch (err) { console.warn("Offline Mode: Cloud backup not accessible."); }
+                renderDashboard();
+                renderChart();
+            } catch (err) {
+                console.warn("Offline Mode");
+            }
         };
-    } catch (e) { console.error("Database Error:", e); }
-};
-
-// === 3. SMART FORMS & UI LOGIC ===
-window.openAddProductForm = (sku = '') => {
-    document.getElementById('products-form-view').classList.remove('hidden');
-    document.getElementById('product-form').reset();
-    document.getElementById('form-id').value = '';
-    document.getElementById('form-sku').value = sku;
-    
-    // Clear Image Previews
-    document.getElementById('form-img-output').src = '';
-    document.getElementById('form-img-output').classList.add('hidden');
-    document.getElementById('image-placeholder').classList.remove('hidden');
-};
-
-window.closeProductForm = () => {
-    document.getElementById('products-form-view').classList.add('hidden');
-};
-
-// Image Upload Handler
-window.handleFormImage = (input) => {
-    if (input.files && input.files[0]) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            document.getElementById('form-img-output').src = e.target.result;
-            document.getElementById('form-img-output').classList.remove('hidden');
-            document.getElementById('image-placeholder').classList.add('hidden');
-        };
-        reader.readAsDataURL(input.files[0]);
+    } catch (e) {
+        console.error(e);
     }
 };
 
-// Calculations
-window.calculateTotalPieces = () => {
-    const cartons = parseInt(document.getElementById('form-cartons').value) || 0;
-    const perCtn = parseInt(document.getElementById('form-pcs-per').value) || 1;
-    document.getElementById('form-total-pcs').value = cartons * perCtn;
-};
+// ============================
+// PAGE SWITCH
+// ============================
 
-window.calculatePrices = (source) => {
-    const pcsPerCtn = parseInt(document.getElementById('form-pcs-per').value) || 1;
-    const ctnPriceField = document.getElementById('form-carton-price');
-    const pcsPriceField = document.getElementById('form-piece-price');
+window.switchPage = pageId => {
+    document
+        .querySelectorAll(".page-view")
+        .forEach(p => p.classList.add("hidden"));
 
-    if (source === 'carton') {
-        pcsPriceField.value = (parseFloat(ctnPriceField.value || 0) / pcsPerCtn).toFixed(2);
-    } else {
-        ctnPriceField.value = (parseFloat(pcsPriceField.value || 0) * pcsPerCtn).toFixed(2);
-    }
-};
+    document
+        .getElementById(`page-${pageId}`)
+        .classList.remove("hidden");
 
-// === 4. SAVING & SYNCING (indexedDB + Cloudinary + Firebase) ===
-window.saveProduct = async (e) => {
-    e.preventDefault();
-    const btn = document.getElementById('save-btn');
-    btn.innerText = "Syncing..."; btn.disabled = true;
+    document.querySelectorAll(".nav-btn").forEach(btn => {
+        btn.classList.remove("text-primary");
+        btn.classList.add("text-slate-500");
 
-    try {
-        let finalImageUrl = document.getElementById('form-img-output').src;
-        const fileInput = document.querySelector('input[type="file"]');
-
-        // Cloudinary Upload if new image selected
-        if (fileInput.files && fileInput.files[0]) {
-            const formData = new FormData();
-            formData.append('file', fileInput.files[0]);
-            formData.append('upload_preset', CLOUDINARY_PRESET);
-            
-            const cloudinaryRes = await fetch(CLOUDINARY_URL, { method: 'POST', body: formData });
-            const data = await cloudinaryRes.json();
-            finalImageUrl = data.secure_url;
+        if (
+            btn.getAttribute("data-page") === pageId
+        ) {
+            btn.classList.remove("text-slate-500");
+            btn.classList.add("text-primary");
         }
-
-        const id = document.getElementById('form-id').value || Date.now().toString();
-        
-        const payload = {
-            id,
-            name: document.getElementById('form-name').value,
-            sku: document.getElementById('form-sku').value,
-            category: document.getElementById('form-category').value,
-            cartons: document.getElementById('form-cartons').value,
-            pcsPerCarton: document.getElementById('form-pcs-per').value,
-            totalPieces: document.getElementById('form-total-pcs').value,
-            cartonPrice: document.getElementById('form-carton-price').value,
-            piecePrice: document.getElementById('form-piece-price').value,
-            expiryDate: document.getElementById('form-expiry').value,
-            image: finalImageUrl,
-            updatedAt: Date.now()
-        };
-
-        // SAVE 1: IndexedDB (Instant Local)
-        const tx = localDB.transaction('products', 'readwrite');
-        tx.objectStore('products').put(payload);
-
-        // SAVE 2: Firebase (Async Backup)
-        await firestore.collection('stockify_products').doc(id).set(payload);
-
-        closeProductForm();
-        syncData(); // Final sync
-    } catch (err) {
-        alert("Sync Failed: " + err.message);
-    } finally {
-        btn.innerText = "Save & Sync"; btn.disabled = false;
-    }
-};
-
-// === 5. RENDERING THE GRID (WITH CARTON PRICE) ===
-window.renderProducts = () => {
-    const grid = document.getElementById('product-grid');
-    const search = document.getElementById('search-input').value.toLowerCase();
-    const today = new Date();
-
-    let filtered = localProducts.filter(p => p.name.toLowerCase().includes(search) || p.sku.includes(search));
-    
-    if (currentFilter === 'expired') {
-        filtered = filtered.filter(p => new Date(p.expiryDate) < today);
-    } else if (currentFilter !== 'all') {
-        filtered = filtered.filter(p => p.category === currentFilter);
-    }
-
-    grid.innerHTML = filtered.map(p => {
-        const isExp = new Date(p.expiryDate) < today;
-        return `
-        <div onclick="viewProductDetails('${p.id}')" class="bg-surface p-4 rounded-[2.5rem] border ${isExp ? 'border-red-500 bg-red-500/5 shadow-red-500/10' : 'border-slate-800'} relative active:scale-95 transition-all shadow-sm">
-            <div class="h-40 rounded-3xl overflow-hidden mb-4 bg-black">
-                <img src="${p.image}" class="w-full h-full object-cover">
-                ${isExp ? '<div class="absolute top-6 right-6 bg-red-600 text-[8px] text-white px-2 py-1 rounded-full font-black uppercase">EXPIRED</div>' : ''}
-            </div>
-            <div class="flex justify-between items-start mb-2">
-                <div>
-                    <h4 class="font-black text-sm uppercase text-white truncate">${p.name}</h4>
-                    <p class="text-[9px] font-bold text-slate-500 mt-0.5">Barcode: ${p.sku}</p>
-                </div>
-                <span class="bg-slate-800 text-[9px] px-2 py-1 rounded-md font-bold text-slate-400 uppercase">${p.category}</span>
-            </div>
-            
-            <div class="flex justify-between items-center pt-3 border-t border-slate-800 space-x-4">
-                <span class="text-sm font-black text-primary">${p.totalPieces} Pcs</span>
-                <div class="flex gap-x-4 text-[11px] font-black text-white/90">
-                    <div class="text-center"><p class="text-[8px] text-slate-500">CTN</p>${p.cartonPrice}</div>
-                    <div class="text-center border-l border-slate-700 pl-4"><p class="text-[8px] text-slate-500">PCS</p>${p.piecePrice}</div>
-                </div>
-            </div>
-        </div>`;
-    }).join('');
-    lucide.createIcons();
-};
-
-window.viewProductDetails = (id) => {
-    const p = localProducts.find(item => item.id === id);
-    if (!p) return;
-
-    document.getElementById('detail-img').src = p.image;
-    document.getElementById('detail-name').innerText = p.name;
-    document.getElementById('detail-category').innerText = p.category;
-    document.getElementById('detail-sku').innerText = p.sku;
-    document.getElementById('detail-stock').innerText = `${p.cartons} Cartons × ${p.pcsPerCarton} (${p.totalPieces} Pcs)`;
-    document.getElementById('detail-ctn-price').innerText = p.cartonPrice;
-    document.getElementById('detail-pce-price').innerText = p.piecePrice;
-    document.getElementById('detail-expiry').innerText = p.expiryDate;
-
-    document.getElementById('details-modal').classList.remove('hidden');
-    document.getElementById('details-modal').classList.add('flex');
-    lucide.createIcons();
-};
-
-window.deleteProduct = async (id) => {
-    if (confirm("Delete this product permanently?")) {
-        const tx = localDB.transaction('products', 'readwrite');
-        tx.objectStore('products').delete(id);
-        await firestore.collection('stockify_products').doc(id).delete();
-        syncData();
-    }
-};
-
-// === 6. NAVIGATION & SETTINGS ===
-window.switchPage = (pageId) => {
-    document.querySelectorAll('.page-view').forEach(p => p.classList.add('hidden'));
-    document.getElementById(`page-${pageId}`).classList.remove('hidden');
-    
-    document.querySelectorAll('.nav-btn').forEach(btn => {
-        const isTarget = btn.getAttribute('data-page') === pageId;
-        if (isTarget) btn.classList.add('text-primary'); else btn.classList.remove('text-primary');
     });
 
-    if (pageId === 'scanner') startScanner();
-    else if (scannerInstance) { scannerInstance.stop(); scannerInstance = null; }
-    
+    if (pageId === "scanner") {
+        startScanner();
+    } else {
+        stopScanner();
+    }
+
     lucide.createIcons();
 };
 
-window.setFilter = (filter) => {
+// ============================
+// FILTER
+// ============================
+
+window.setFilter = filter => {
     currentFilter = filter;
-    document.querySelectorAll('.filter-chip').forEach(btn => {
-        const isTarget = btn.innerText.toLowerCase().includes(filter.toLowerCase()) || (filter === 'all' && btn.innerText === 'All');
-        if(isTarget) btn.classList.add('active'); else btn.classList.remove('active');
+
+    document.querySelectorAll(".filter-chip").forEach(btn => {
+        btn.classList.remove("active");
+
+        if (
+            btn.innerText
+                .toLowerCase()
+                .includes(filter.toLowerCase()) ||
+            (filter === "all" &&
+                btn.innerText === "All")
+        ) {
+            btn.classList.add("active");
+        }
     });
+
     renderProducts();
 };
 
-// === 7. SMART SCANNER (Auto-Add Feature) ===
-window.startScanner = () => {
-    scannerInstance = new Html5Qrcode("scanner-container");
-    const config = { fps: 15, qrbox: 250 };
-    scannerInstance.start({ facingMode: "environment" }, config, (decoded) => {
-        const match = localProducts.find(p => p.sku === decoded);
-        if (match) {
-            scannerInstance.stop();
-            switchPage('products');
-            viewProductDetails(match.id);
-        } else {
-            scannerInstance.stop();
-            if(confirm("New Product: " + decoded + "\nProduct not found. Add now?")) {
-                openAddProductForm(decoded);
-            } else { startScanner(); }
+// ============================
+// PRODUCT FORM
+// ============================
+
+window.openAddProductForm = (
+    sku = "",
+    existing = null
+) => {
+    let old = document.getElementById(
+        "products-form-view"
+    );
+
+    if (old) old.remove();
+
+    const html = `
+    <div id="products-form-view"
+    class="fixed inset-0 bg-[#020617] z-[9999] overflow-y-auto p-6 pb-32">
+
+        <div class="max-w-2xl mx-auto">
+
+            <div class="flex justify-between items-center mb-10">
+
+                <div>
+                    <h2 class="text-3xl font-black">
+                        ${existing ? "Edit Product" : "Add Product"}
+                    </h2>
+
+                    <p class="text-xs uppercase tracking-widest text-slate-500 font-black mt-2">
+                        Smart Inventory Form
+                    </p>
+                </div>
+
+                <button onclick="closeProductForm()"
+                class="bg-slate-900 p-4 rounded-2xl">
+
+                    ✕
+
+                </button>
+
+            </div>
+
+            <form id="product-form"
+            class="space-y-5"
+            onsubmit="saveProduct(event)">
+
+                <input type="hidden" id="form-id">
+
+                <div class="bg-slate-900 border border-slate-800 rounded-[2rem] p-5">
+
+                    <label class="text-xs uppercase text-slate-500 font-black">
+                        Product Name
+                    </label>
+
+                    <input
+                    required
+                    id="form-name"
+                    type="text"
+                    class="w-full bg-transparent mt-3 text-white text-lg font-black">
+
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+
+                    <div class="bg-slate-900 border border-slate-800 rounded-[2rem] p-5">
+
+                        <label class="text-xs uppercase text-slate-500 font-black">
+                            Barcode
+                        </label>
+
+                        <input
+                        required
+                        id="form-sku"
+                        type="text"
+                        class="w-full bg-transparent mt-3 text-white font-black">
+
+                    </div>
+
+                    <div class="bg-slate-900 border border-slate-800 rounded-[2rem] p-5">
+
+                        <label class="text-xs uppercase text-slate-500 font-black">
+                            Category
+                        </label>
+
+                        <select id="form-category"
+                        class="w-full bg-transparent mt-3 text-white font-black">
+
+                            <option>Grains</option>
+                            <option>Dairy</option>
+                            <option>Beverages</option>
+                            <option>Snacks</option>
+
+                        </select>
+
+                    </div>
+
+                </div>
+
+                <div class="grid grid-cols-3 gap-4">
+
+                    <div class="bg-slate-900 border border-slate-800 rounded-[2rem] p-5">
+
+                        <label class="text-xs uppercase text-slate-500 font-black">
+                            Cartons
+                        </label>
+
+                        <input
+                        id="form-cartons"
+                        value="1"
+                        oninput="calculateTotalPieces()"
+                        type="number"
+                        class="w-full bg-transparent mt-3 text-white text-2xl font-black">
+
+                    </div>
+
+                    <div class="bg-slate-900 border border-slate-800 rounded-[2rem] p-5">
+
+                        <label class="text-xs uppercase text-slate-500 font-black">
+                            Pcs/Ctn
+                        </label>
+
+                        <input
+                        id="form-pcs-per"
+                        value="10"
+                        oninput="calculateTotalPieces()"
+                        type="number"
+                        class="w-full bg-transparent mt-3 text-white text-2xl font-black">
+
+                    </div>
+
+                    <div class="bg-primary/10 border border-primary/20 rounded-[2rem] p-5">
+
+                        <label class="text-xs uppercase text-primary font-black">
+                            Total
+                        </label>
+
+                        <input
+                        readonly
+                        id="form-total-pcs"
+                        type="number"
+                        class="w-full bg-transparent mt-3 text-primary text-2xl font-black">
+
+                    </div>
+
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+
+                    <div class="bg-slate-900 border border-slate-800 rounded-[2rem] p-5">
+
+                        <label class="text-xs uppercase text-slate-500 font-black">
+                            Carton Price
+                        </label>
+
+                        <input
+                        id="form-carton-price"
+                        oninput="calculatePrices('carton')"
+                        type="number"
+                        class="w-full bg-transparent mt-3 text-white text-xl font-black">
+
+                    </div>
+
+                    <div class="bg-slate-900 border border-slate-800 rounded-[2rem] p-5">
+
+                        <label class="text-xs uppercase text-slate-500 font-black">
+                            Piece Price
+                        </label>
+
+                        <input
+                        id="form-piece-price"
+                        oninput="calculatePrices('piece')"
+                        type="number"
+                        class="w-full bg-transparent mt-3 text-primary text-xl font-black">
+
+                    </div>
+
+                </div>
+
+                <div class="bg-slate-900 border border-slate-800 rounded-[2rem] p-5">
+
+                    <label class="text-xs uppercase text-slate-500 font-black">
+                        Expiry Date
+                    </label>
+
+                    <input
+                    required
+                    id="form-expiry"
+                    type="date"
+                    class="w-full bg-transparent mt-3 text-white font-black">
+
+                </div>
+
+                <div class="bg-slate-900 border border-slate-800 rounded-[2rem] p-5">
+
+                    <label class="text-xs uppercase text-slate-500 font-black">
+                        Product Image
+                    </label>
+
+                    <input
+                    id="form-image"
+                    type="file"
+                    accept="image/*"
+                    class="w-full mt-4 text-sm">
+
+                </div>
+
+                <button
+                id="save-btn"
+                class="w-full bg-primary py-6 rounded-[2rem] font-black uppercase tracking-widest shadow-2xl shadow-green-900/40">
+
+                    Save Product
+
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+    `;
+
+    document.body.insertAdjacentHTML(
+        "beforeend",
+        html
+    );
+
+    if (existing) {
+        document.getElementById("form-id").value =
+            existing.id;
+
+        document.getElementById("form-name").value =
+            existing.name;
+
+        document.getElementById("form-sku").value =
+            existing.sku;
+
+        document.getElementById(
+            "form-category"
+        ).value = existing.category;
+
+        document.getElementById(
+            "form-cartons"
+        ).value = existing.cartons;
+
+        document.getElementById(
+            "form-pcs-per"
+        ).value = existing.pcsPerCarton;
+
+        document.getElementById(
+            "form-total-pcs"
+        ).value = existing.totalPieces;
+
+        document.getElementById(
+            "form-carton-price"
+        ).value = existing.cartonPrice;
+
+        document.getElementById(
+            "form-piece-price"
+        ).value = existing.piecePrice;
+
+        document.getElementById(
+            "form-expiry"
+        ).value = existing.expiryDate;
+    }
+
+    document.getElementById("form-sku").value =
+        sku;
+
+    calculateTotalPieces();
+};
+
+window.closeProductForm = () => {
+    let el = document.getElementById(
+        "products-form-view"
+    );
+
+    if (el) el.remove();
+};
+
+// ============================
+// CALCULATIONS
+// ============================
+
+window.calculateTotalPieces = () => {
+    const cartons =
+        parseInt(
+            document.getElementById("form-cartons")
+                .value
+        ) || 0;
+
+    const per =
+        parseInt(
+            document.getElementById("form-pcs-per")
+                .value
+        ) || 1;
+
+    document.getElementById(
+        "form-total-pcs"
+    ).value = cartons * per;
+};
+
+window.calculatePrices = source => {
+    const per =
+        parseInt(
+            document.getElementById("form-pcs-per")
+                .value
+        ) || 1;
+
+    const carton =
+        document.getElementById(
+            "form-carton-price"
+        );
+
+    const piece =
+        document.getElementById(
+            "form-piece-price"
+        );
+
+    if (source === "carton") {
+        piece.value = (
+            parseFloat(carton.value || 0) / per
+        ).toFixed(2);
+    } else {
+        carton.value = (
+            parseFloat(piece.value || 0) * per
+        ).toFixed(2);
+    }
+};
+
+// ============================
+// SAVE PRODUCT
+// ============================
+
+window.saveProduct = async e => {
+    e.preventDefault();
+
+    const btn =
+        document.getElementById("save-btn");
+
+    btn.innerText = "Saving...";
+    btn.disabled = true;
+
+    try {
+        let image = "";
+
+        const file =
+            document.getElementById(
+                "form-image"
+            ).files[0];
+
+        if (file) {
+            const fd = new FormData();
+
+            fd.append("file", file);
+
+            fd.append(
+                "upload_preset",
+                CLOUDINARY_PRESET
+            );
+
+            const res = await fetch(
+                CLOUDINARY_URL,
+                {
+                    method: "POST",
+                    body: fd
+                }
+            );
+
+            const data = await res.json();
+
+            image = data.secure_url;
+        }
+
+        const id =
+            document.getElementById("form-id")
+                .value || Date.now().toString();
+
+        const payload = {
+            id,
+            name:
+                document.getElementById(
+                    "form-name"
+                ).value,
+            sku:
+                document.getElementById(
+                    "form-sku"
+                ).value,
+            category:
+                document.getElementById(
+                    "form-category"
+                ).value,
+            cartons:
+                document.getElementById(
+                    "form-cartons"
+                ).value,
+            pcsPerCarton:
+                document.getElementById(
+                    "form-pcs-per"
+                ).value,
+            totalPieces:
+                document.getElementById(
+                    "form-total-pcs"
+                ).value,
+            cartonPrice:
+                document.getElementById(
+                    "form-carton-price"
+                ).value,
+            piecePrice:
+                document.getElementById(
+                    "form-piece-price"
+                ).value,
+            expiryDate:
+                document.getElementById(
+                    "form-expiry"
+                ).value,
+            image,
+            updatedAt: Date.now()
+        };
+
+        const tx = localDB.transaction(
+            "products",
+            "readwrite"
+        );
+
+        tx.objectStore("products").put(payload);
+
+        await firestore
+            .collection("stockify_products")
+            .doc(id)
+            .set(payload);
+
+        closeProductForm();
+
+        syncData();
+    } catch (err) {
+        alert(err.message);
+    }
+
+    btn.innerText = "Save Product";
+    btn.disabled = false;
+};
+
+// ============================
+// PRODUCT GRID
+// ============================
+
+window.renderProducts = () => {
+    const grid =
+        document.getElementById("product-grid");
+
+    const empty =
+        document.getElementById(
+            "empty-products"
+        );
+
+    const search =
+        document
+            .getElementById("search-input")
+            .value.toLowerCase();
+
+    const today = new Date();
+
+    let filtered = localProducts.filter(
+        p =>
+            p.name
+                .toLowerCase()
+                .includes(search) ||
+            p.sku.includes(search)
+    );
+
+    if (currentFilter === "expired") {
+        filtered = filtered.filter(
+            p => new Date(p.expiryDate) < today
+        );
+    }
+
+    if (currentFilter === "expiring") {
+        filtered = filtered.filter(p => {
+            const exp = new Date(p.expiryDate);
+
+            const diff =
+                (exp - today) /
+                (1000 * 60 * 60 * 24);
+
+            return diff <= 7 && diff >= 0;
+        });
+    }
+
+    if (
+        !["all", "expired", "expiring"].includes(
+            currentFilter
+        )
+    ) {
+        filtered = filtered.filter(
+            p => p.category === currentFilter
+        );
+    }
+
+    if (!filtered.length) {
+        grid.innerHTML = "";
+        empty.classList.remove("hidden");
+        return;
+    }
+
+    empty.classList.add("hidden");
+
+    grid.innerHTML = filtered
+        .map(p => {
+            const exp =
+                new Date(p.expiryDate) < today;
+
+            return `
+        <div
+        class="bg-slate-900 border ${
+            exp
+                ? "border-red-500/30"
+                : "border-slate-800"
+        } rounded-[2rem] overflow-hidden shadow-xl card-hover">
+
+            <div class="h-56 bg-black overflow-hidden">
+
+                <img
+                src="${
+                    p.image ||
+                    "https://placehold.co/600x400/000000/FFFFFF?text=Stockify"
+                }"
+                class="w-full h-full object-cover">
+
+            </div>
+
+            <div class="p-5">
+
+                <div class="flex justify-between items-start mb-4">
+
+                    <div>
+
+                        <h3 class="text-xl font-black">
+                            ${p.name}
+                        </h3>
+
+                        <p class="text-xs text-slate-500 font-bold mt-1">
+                            ${p.sku}
+                        </p>
+
+                    </div>
+
+                    <span
+                    class="bg-primary/10 text-primary text-[10px] px-3 py-1 rounded-full uppercase font-black">
+
+                        ${p.category}
+
+                    </span>
+
+                </div>
+
+                <div class="grid grid-cols-3 gap-3 mb-5">
+
+                    <div class="bg-slate-800 rounded-2xl p-3 text-center">
+
+                        <p class="text-[10px] uppercase text-slate-500 font-black">
+                            Stock
+                        </p>
+
+                        <h4 class="text-lg font-black mt-2">
+                            ${p.totalPieces}
+                        </h4>
+
+                    </div>
+
+                    <div class="bg-slate-800 rounded-2xl p-3 text-center">
+
+                        <p class="text-[10px] uppercase text-slate-500 font-black">
+                            CTN
+                        </p>
+
+                        <h4 class="text-lg font-black mt-2">
+                            ${p.cartonPrice}
+                        </h4>
+
+                    </div>
+
+                    <div class="bg-slate-800 rounded-2xl p-3 text-center">
+
+                        <p class="text-[10px] uppercase text-slate-500 font-black">
+                            PCS
+                        </p>
+
+                        <h4 class="text-lg font-black mt-2 text-primary">
+                            ${p.piecePrice}
+                        </h4>
+
+                    </div>
+
+                </div>
+
+                <div class="flex gap-3">
+
+                    <button
+                    onclick="editProduct('${p.id}')"
+                    class="flex-1 bg-primary/10 border border-primary/20 text-primary py-4 rounded-2xl font-black uppercase text-xs">
+
+                        Edit
+
+                    </button>
+
+                    <button
+                    onclick="deleteProduct('${p.id}')"
+                    class="flex-1 bg-red-500/10 border border-red-500/20 text-red-500 py-4 rounded-2xl font-black uppercase text-xs">
+
+                        Delete
+
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+        `;
+        })
+        .join("");
+
+    lucide.createIcons();
+};
+
+// ============================
+// EDIT PRODUCT
+// ============================
+
+window.editProduct = id => {
+    const product = localProducts.find(
+        p => p.id === id
+    );
+
+    if (!product) return;
+
+    openAddProductForm("", product);
+};
+
+// ============================
+// DELETE PRODUCT
+// ============================
+
+window.deleteProduct = async id => {
+    const confirmDelete = confirm(
+        "Delete this product?"
+    );
+
+    if (!confirmDelete) return;
+
+    const tx = localDB.transaction(
+        "products",
+        "readwrite"
+    );
+
+    tx.objectStore("products").delete(id);
+
+    await firestore
+        .collection("stockify_products")
+        .doc(id)
+        .delete();
+
+    syncData();
+};
+
+// ============================
+// DASHBOARD
+// ============================
+
+window.renderDashboard = () => {
+    const total = localProducts.length;
+
+    const today = new Date();
+
+    let expired = 0;
+    let expiring = 0;
+
+    localProducts.forEach(p => {
+        const exp = new Date(p.expiryDate);
+
+        const diff =
+            (exp - today) /
+            (1000 * 60 * 60 * 24);
+
+        if (diff < 0) expired++;
+
+        if (diff <= 7 && diff >= 0)
+            expiring++;
+    });
+
+    const categories = [
+        ...new Set(
+            localProducts.map(p => p.category)
+        )
+    ];
+
+    document.getElementById(
+        "dash-total"
+    ).innerText = total;
+
+    document.getElementById(
+        "dash-expired"
+    ).innerText = expired;
+
+    document.getElementById(
+        "dash-expiring"
+    ).innerText = expiring;
+
+    document.getElementById(
+        "dash-category"
+    ).innerText = categories.length;
+};
+
+// ============================
+// CHART
+// ============================
+
+window.renderChart = () => {
+    const canvas =
+        document.getElementById("stockChart");
+
+    if (!canvas) return;
+
+    const empty =
+        document.getElementById(
+            "chart-empty"
+        );
+
+    if (!localProducts.length) {
+        empty.classList.remove("hidden");
+        return;
+    }
+
+    empty.classList.add("hidden");
+
+    const ctx = canvas.getContext("2d");
+
+    if (stockChart) stockChart.destroy();
+
+    const labels = localProducts.map(
+        p => p.name
+    );
+
+    const data = localProducts.map(
+        p => parseInt(p.totalPieces) || 0
+    );
+
+    stockChart = new Chart(ctx, {
+        type: "bar",
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: "Stock",
+                    data,
+                    borderRadius: 18
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+
+            plugins: {
+                legend: {
+                    labels: {
+                        color: "white"
+                    }
+                }
+            },
+
+            scales: {
+                x: {
+                    ticks: {
+                        color: "#94a3b8"
+                    }
+                },
+
+                y: {
+                    ticks: {
+                        color: "#94a3b8"
+                    }
+                }
+            }
         }
     });
 };
 
-window.renderDashboard = () => {
-    const today = new Date();
-    let expCount = 0;
-    localProducts.forEach(p => { if (new Date(p.expiryDate) < today) expCount++; });
-    document.getElementById('dash-total').innerText = localProducts.length;
-    document.getElementById('dash-expired').innerText = expCount;
+// ============================
+// SCANNER
+// ============================
+
+window.startScanner = async () => {
+    if (scannerInstance) return;
+
+    scannerInstance = new Html5Qrcode(
+        "scanner-container"
+    );
+
+    const config = {
+        fps: 10,
+        qrbox: 250
+    };
+
+    scannerInstance.start(
+        {
+            facingMode: "environment"
+        },
+        config,
+        decoded => {
+            const sound =
+                document.getElementById(
+                    "scan-sound"
+                );
+
+            sound.play();
+
+            const overlay =
+                document.getElementById(
+                    "scan-success"
+                );
+
+            overlay.classList.remove("hidden");
+            overlay.classList.add("flex");
+
+            setTimeout(() => {
+                overlay.classList.add("hidden");
+            }, 1500);
+
+            const product = localProducts.find(
+                p => p.sku === decoded
+            );
+
+            if (product) {
+                stopScanner();
+
+                switchPage("products");
+
+                setTimeout(() => {
+                    alert(
+                        `${product.name}\nStock: ${product.totalPieces}`
+                    );
+                }, 400);
+            } else {
+                stopScanner();
+
+                const addNew = confirm(
+                    `Barcode: ${decoded}\n\nProduct not found.\nAdd new product?`
+                );
+
+                if (addNew) {
+                    openAddProductForm(decoded);
+                }
+            }
+        }
+    );
 };
 
-// === INIT ===
-document.addEventListener('DOMContentLoaded', async () => {
-    await initLocalDB();
-    syncData();
-    lucide.createIcons();
-});
+window.stopScanner = async () => {
+    try {
+        if (scannerInstance) {
+            await scannerInstance.stop();
+            scannerInstance.clear();
+            scannerInstance = null;
+        }
+    } catch (e) {}
+};
+
+// ============================
+// INIT
+// ============================
+
+document.addEventListener(
+    "DOMContentLoaded",
+    async () => {
+        await initLocalDB();
+
+        syncData();
+
+        lucide.createIcons();
+    }
+);
