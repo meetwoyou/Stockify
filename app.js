@@ -1,773 +1,503 @@
-/**
- * STOCKIFY ULTRA FINAL
- * Developer: Sabbir Hosen Akash
- */
+<!-- ========================= -->
+<!-- SCAN SOUND -->
+<!-- ========================= -->
 
-// =======================
-// FIREBASE
-// =======================
+<audio id="scan-sound" preload="auto">
+    <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg">
+</audio>
 
-const firebaseConfig = {
-    apiKey: "AIzaSyBn3x2qSo8k6a9wrxNfLmVliWMmsUk8wfY",
-    authDomain: "meetwoyou-436a2.firebaseapp.com",
-    projectId: "meetwoyou-436a2",
-    storageBucket: "meetwoyou-436a2.firebasestorage.app",
-    messagingSenderId: "612788132077",
-    appId: "1:612788132077:web:0a8b92edf26778efd4d4e4"
-};
+<!-- ========================= -->
+<!-- PRODUCT ADD / EDIT FORM -->
+<!-- ========================= -->
 
-firebase.initializeApp(firebaseConfig);
+<div id="products-form-view"
+    class="fixed inset-0 z-[9999] bg-[#0b1120] overflow-y-auto hidden">
 
-const firestore = firebase.firestore();
+    <div class="max-w-5xl mx-auto p-4 md:p-10">
 
-// =======================
-// CLOUDINARY
-// =======================
+        <!-- HEADER -->
 
-const CLOUDINARY_URL =
-    "https://api.cloudinary.com/v1_1/dpgawb5sl/image/upload";
+        <div class="flex items-center justify-between mb-8">
 
-const CLOUDINARY_PRESET = "Meetwoyou";
+            <div>
+                <h1 class="text-3xl md:text-5xl font-black text-white">
+                    Product Manager
+                </h1>
 
-// =======================
-// GLOBAL
-// =======================
+                <p class="text-slate-500 uppercase text-xs font-black tracking-widest mt-2">
+                    Add / Edit Product
+                </p>
+            </div>
 
-let localProducts = [];
+            <button onclick="closeProductForm()"
+                class="w-14 h-14 rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center active:scale-90">
 
-let localDB;
+                <i data-lucide="x" class="w-6 h-6"></i>
 
-let currentFilter = "all";
+            </button>
 
-let scanner = null;
+        </div>
 
-let chart1 = null;
+        <!-- FORM -->
 
-let chart2 = null;
+        <form id="product-form"
+            onsubmit="saveProduct(event)"
+            class="grid lg:grid-cols-2 gap-6">
 
-// =======================
-// INDEXED DB
-// =======================
+            <!-- LEFT -->
 
-async function initDB() {
+            <div class="space-y-5">
 
-    return new Promise((resolve, reject) => {
+                <!-- IMAGE -->
 
-        const request = indexedDB.open("StockifyUltra", 1);
+                <div
+                    class="bg-slate-900 border border-slate-800 rounded-[2rem] p-5">
 
-        request.onupgradeneeded = (e) => {
+                    <div
+                        class="relative h-72 rounded-[2rem] overflow-hidden border-2 border-dashed border-slate-700 flex items-center justify-center">
 
-            const db = e.target.result;
+                        <img id="form-img-output"
+                            class="absolute inset-0 w-full h-full object-cover hidden">
 
-            if (!db.objectStoreNames.contains("products")) {
+                        <div id="image-placeholder"
+                            class="text-center">
 
-                db.createObjectStore("products", {
-                    keyPath: "id"
-                });
+                            <i data-lucide="image-plus"
+                                class="w-14 h-14 mx-auto text-slate-600 mb-4"></i>
 
-            }
+                            <p
+                                class="text-slate-500 uppercase text-xs font-black tracking-widest">
 
-        };
+                                Upload Product Photo
 
-        request.onsuccess = (e) => {
+                            </p>
 
-            localDB = e.target.result;
+                        </div>
 
-            resolve();
+                        <input type="file"
+                            accept="image/*"
+                            onchange="handleFormImage(this)"
+                            class="absolute inset-0 opacity-0 cursor-pointer">
 
-        };
+                    </div>
 
-        request.onerror = reject;
+                </div>
 
-    });
+                <!-- PRODUCT NAME -->
 
-}
+                <div
+                    class="bg-slate-900 border border-slate-800 rounded-[2rem] p-5">
 
-// =======================
-// SYNC
-// =======================
+                    <label
+                        class="text-xs uppercase text-slate-500 font-black tracking-widest block mb-3">
 
-async function syncData() {
+                        Product Name
 
-    try {
+                    </label>
 
-        const snapshot = await firestore
-            .collection("stockify_products")
-            .get();
+                    <input type="text"
+                        id="form-name"
+                        required
+                        placeholder="Enter product name"
+                        class="w-full bg-transparent text-white text-xl font-black outline-none">
 
-        localProducts = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        }));
+                </div>
 
-        renderProducts();
+                <!-- SKU -->
 
-        renderDashboard();
+                <div
+                    class="bg-slate-900 border border-slate-800 rounded-[2rem] p-5">
 
-    } catch (err) {
+                    <label
+                        class="text-xs uppercase text-slate-500 font-black tracking-widest block mb-3">
 
-        console.log(err);
+                        Barcode / SKU
 
-    }
+                    </label>
 
-}
+                    <input type="text"
+                        id="form-sku"
+                        required
+                        placeholder="Barcode"
+                        class="w-full bg-transparent text-white text-xl font-black outline-none">
 
-// =======================
-// PAGE
-// =======================
+                </div>
 
-window.switchPage = (page) => {
+                <!-- CATEGORY -->
 
-    document.querySelectorAll(".page-view")
-        .forEach(p => p.classList.add("hidden"));
+                <div
+                    class="bg-slate-900 border border-slate-800 rounded-[2rem] p-5">
 
-    document
-        .getElementById(`page-${page}`)
-        .classList.remove("hidden");
+                    <label
+                        class="text-xs uppercase text-slate-500 font-black tracking-widest block mb-3">
 
-    document.querySelectorAll(".nav-btn")
-        .forEach(btn => {
+                        Category
 
-            btn.classList.remove("text-primary");
+                    </label>
 
-            if (btn.dataset.page === page) {
+                    <select id="form-category"
+                        class="w-full bg-transparent text-white text-lg font-black outline-none">
 
-                btn.classList.add("text-primary");
+                        <option value="Beverages">Beverages</option>
 
-            }
+                        <option value="Soft Drinks">Soft Drinks</option>
 
-        });
+                        <option value="Energy Drinks">Energy Drinks</option>
 
-    if (page === "scanner") {
+                        <option value="Snacks">Snacks</option>
 
-        startScanner();
+                        <option value="Chocolate">Chocolate</option>
 
-    } else {
+                        <option value="Biscuits">Biscuits</option>
 
-        stopScanner();
+                        <option value="Dairy">Dairy</option>
 
-    }
+                        <option value="Frozen">Frozen</option>
 
-};
+                        <option value="Ice Cream">Ice Cream</option>
 
-// =======================
-// THEME
-// =======================
+                        <option value="Grains">Grains</option>
 
-window.toggleTheme = () => {
+                        <option value="Rice">Rice</option>
 
-    document.documentElement.classList.toggle("dark");
+                        <option value="Oil">Oil</option>
 
-};
+                        <option value="Cleaning">Cleaning</option>
 
-// =======================
-// FILTER
-// =======================
+                        <option value="Personal Care">Personal Care</option>
 
-window.setFilter = (filter) => {
+                        <option value="Medicine">Medicine</option>
 
-    currentFilter = filter;
+                        <option value="Electronics">Electronics</option>
 
-    document.querySelectorAll(".filter-chip")
-        .forEach(btn => btn.classList.remove("active"));
+                        <option value="Mobile Accessories">Mobile Accessories</option>
 
-    event.target.classList.add("active");
+                    </select>
 
-    renderProducts();
-
-};
-
-// =======================
-// FORM OPEN
-// =======================
-
-window.openAddProductForm = (barcode = "") => {
-
-    document
-        .getElementById("products-form-view")
-        .classList.remove("hidden");
-
-    document.getElementById("product-form").reset();
-
-    document.getElementById("form-id").value = "";
-
-    document.getElementById("form-sku").value = barcode;
-
-};
-
-window.closeProductForm = () => {
-
-    document
-        .getElementById("products-form-view")
-        .classList.add("hidden");
-
-};
-
-// =======================
-// IMAGE
-// =======================
-
-window.handleFormImage = (input) => {
-
-    if (!input.files[0]) return;
-
-    const reader = new FileReader();
-
-    reader.onload = (e) => {
-
-        const img =
-            document.getElementById("form-img-output");
-
-        img.src = e.target.result;
-
-        img.classList.remove("hidden");
-
-    };
-
-    reader.readAsDataURL(input.files[0]);
-
-};
-
-// =======================
-// CALCULATION
-// =======================
-
-window.calculateTotalPieces = () => {
-
-    const cartons =
-        parseInt(document.getElementById("form-cartons").value) || 0;
-
-    const per =
-        parseInt(document.getElementById("form-pcs-per").value) || 1;
-
-    document.getElementById("form-total-pcs").value =
-        cartons * per;
-
-};
-
-window.calculatePrices = (type) => {
-
-    const carton =
-        parseFloat(document.getElementById("form-carton-price").value) || 0;
-
-    const piece =
-        parseFloat(document.getElementById("form-piece-price").value) || 0;
-
-    const per =
-        parseInt(document.getElementById("form-pcs-per").value) || 1;
-
-    if (type === "carton") {
-
-        document.getElementById("form-piece-price").value =
-            (carton / per).toFixed(2);
-
-    } else {
-
-        document.getElementById("form-carton-price").value =
-            (piece * per).toFixed(2);
-
-    }
-
-};
-
-// =======================
-// SAVE PRODUCT
-// =======================
-
-window.saveProduct = async (e) => {
-
-    e.preventDefault();
-
-    try {
-
-        let imageUrl = "";
-
-        const file =
-            document.querySelector('input[type="file"]').files[0];
-
-        // upload image
-        if (file) {
-
-            const formData = new FormData();
-
-            formData.append("file", file);
-
-            formData.append("upload_preset", CLOUDINARY_PRESET);
-
-            const response = await fetch(CLOUDINARY_URL, {
-                method: "POST",
-                body: formData
-            });
-
-            const data = await response.json();
-
-            imageUrl = data.secure_url;
-
-        }
-
-        const id =
-            document.getElementById("form-id").value ||
-            Date.now().toString();
-
-        const old =
-            localProducts.find(p => p.id === id);
-
-        const payload = {
-
-            id,
-
-            name:
-                document.getElementById("form-name").value,
-
-            sku:
-                document.getElementById("form-sku").value,
-
-            category:
-                document.getElementById("form-category").value,
-
-            cartons:
-                document.getElementById("form-cartons").value,
-
-            pcsPerCarton:
-                document.getElementById("form-pcs-per").value,
-
-            totalPieces:
-                document.getElementById("form-total-pcs").value,
-
-            cartonPrice:
-                document.getElementById("form-carton-price").value,
-
-            piecePrice:
-                document.getElementById("form-piece-price").value,
-
-            expiryDate:
-                document.getElementById("form-expiry").value,
-
-            image:
-                imageUrl || old?.image || ""
-
-        };
-
-        await firestore
-            .collection("stockify_products")
-            .doc(id)
-            .set(payload);
-
-        closeProductForm();
-
-        syncData();
-
-        alert("Product Saved");
-
-    } catch (err) {
-
-        alert(err.message);
-
-    }
-
-};
-
-// =======================
-// RENDER PRODUCTS
-// =======================
-
-window.renderProducts = () => {
-
-    const grid =
-        document.getElementById("product-grid");
-
-    if (!grid) return;
-
-    const search =
-        document.getElementById("search-input")
-        ?.value
-        ?.toLowerCase() || "";
-
-    const today = new Date();
-
-    let products = localProducts.filter(p => {
-
-        return (
-            p.name.toLowerCase().includes(search) ||
-            p.sku.includes(search)
-        );
-
-    });
-
-    if (currentFilter === "expired") {
-
-        products = products.filter(
-            p => new Date(p.expiryDate) < today
-        );
-
-    }
-
-    if (currentFilter === "expiring") {
-
-        products = products.filter(p => {
-
-            const diff =
-                (new Date(p.expiryDate) - today) /
-                (1000 * 60 * 60 * 24);
-
-            return diff <= 7 && diff >= 0;
-
-        });
-
-    }
-
-    if (
-        currentFilter !== "all" &&
-        currentFilter !== "expired" &&
-        currentFilter !== "expiring"
-    ) {
-
-        products = products.filter(
-            p => p.category === currentFilter
-        );
-
-    }
-
-    grid.innerHTML = products.map(p => {
-
-        return `
-
-        <div class="bg-slate-900 rounded-[2rem] overflow-hidden border border-slate-800">
-
-            <div class="h-60 overflow-hidden">
-
-                <img src="${p.image}"
-                    class="w-full h-full object-cover">
+                </div>
 
             </div>
 
-            <div class="p-5">
+            <!-- RIGHT -->
 
-                <div class="flex justify-between mb-4">
+            <div class="space-y-5">
 
-                    <div>
+                <!-- STOCK -->
 
-                        <h2 class="text-2xl font-black">
-                            ${p.name}
-                        </h2>
+                <div
+                    class="bg-slate-900 border border-slate-800 rounded-[2rem] p-6">
 
-                        <p class="text-xs text-slate-500 mt-1 uppercase">
-                            ${p.category}
-                        </p>
+                    <h2
+                        class="text-white text-xl font-black mb-6">
 
-                    </div>
+                        Stock Information
 
-                    <div class="text-primary font-black">
-                        ${p.totalPieces} pcs
+                    </h2>
+
+                    <div class="grid grid-cols-3 gap-4">
+
+                        <div>
+
+                            <label
+                                class="text-xs uppercase text-slate-500 font-black block mb-2">
+
+                                Cartons
+
+                            </label>
+
+                            <input type="number"
+                                id="form-cartons"
+                                value="1"
+                                oninput="calculateTotalPieces()"
+                                class="w-full bg-slate-800 rounded-2xl p-4 text-center text-white text-xl font-black outline-none">
+
+                        </div>
+
+                        <div>
+
+                            <label
+                                class="text-xs uppercase text-slate-500 font-black block mb-2">
+
+                                Pcs/Ctn
+
+                            </label>
+
+                            <input type="number"
+                                id="form-pcs-per"
+                                value="12"
+                                oninput="calculateTotalPieces()"
+                                class="w-full bg-slate-800 rounded-2xl p-4 text-center text-white text-xl font-black outline-none">
+
+                        </div>
+
+                        <div>
+
+                            <label
+                                class="text-xs uppercase text-primary font-black block mb-2">
+
+                                Total
+
+                            </label>
+
+                            <input type="number"
+                                id="form-total-pcs"
+                                readonly
+                                class="w-full bg-primary/10 rounded-2xl p-4 text-center text-primary text-xl font-black outline-none">
+
+                        </div>
+
                     </div>
 
                 </div>
 
-                <div class="space-y-2 text-sm mb-5">
+                <!-- PRICE -->
 
-                    <div class="flex justify-between">
-                        <span>Barcode</span>
-                        <span>${p.sku}</span>
-                    </div>
+                <div
+                    class="bg-slate-900 border border-slate-800 rounded-[2rem] p-6">
 
-                    <div class="flex justify-between">
-                        <span>Expiry</span>
-                        <span class="text-yellow-400">
-                            ${p.expiryDate}
-                        </span>
+                    <h2
+                        class="text-white text-xl font-black mb-6">
+
+                        Price Information
+
+                    </h2>
+
+                    <div class="grid grid-cols-2 gap-4">
+
+                        <div>
+
+                            <label
+                                class="text-xs uppercase text-slate-500 font-black block mb-2">
+
+                                Carton Price
+
+                            </label>
+
+                            <input type="number"
+                                step="0.01"
+                                id="form-carton-price"
+                                oninput="calculatePrices('carton')"
+                                class="w-full bg-slate-800 rounded-2xl p-5 text-white text-xl font-black outline-none">
+
+                        </div>
+
+                        <div>
+
+                            <label
+                                class="text-xs uppercase text-slate-500 font-black block mb-2">
+
+                                Piece Price
+
+                            </label>
+
+                            <input type="number"
+                                step="0.01"
+                                id="form-piece-price"
+                                oninput="calculatePrices('piece')"
+                                class="w-full bg-slate-800 rounded-2xl p-5 text-primary text-xl font-black outline-none">
+
+                        </div>
+
                     </div>
 
                 </div>
 
-                <div class="grid grid-cols-2 gap-3">
+                <!-- EXPIRY -->
 
-                    <button onclick="editProduct('${p.id}')"
-                        class="bg-primary text-black py-4 rounded-2xl font-black">
+                <div
+                    class="bg-slate-900 border border-slate-800 rounded-[2rem] p-6">
 
-                        Edit
+                    <label
+                        class="text-xs uppercase text-slate-500 font-black block mb-4">
 
-                    </button>
+                        Expiry Date
 
-                    <button onclick="deleteProduct('${p.id}')"
-                        class="bg-red-500/10 text-red-400 py-4 rounded-2xl font-black">
+                    </label>
 
-                        Delete
-
-                    </button>
+                    <input type="date"
+                        id="form-expiry"
+                        required
+                        class="w-full bg-slate-800 rounded-2xl p-5 text-white text-xl font-black outline-none">
 
                 </div>
+
+                <!-- SAVE -->
+
+                <input type="hidden"
+                    id="form-id">
+
+                <button type="submit"
+                    id="save-btn"
+                    class="w-full bg-primary text-black py-6 rounded-[2rem] text-lg font-black uppercase tracking-widest shadow-2xl shadow-green-900/40 active:scale-95 transition-all">
+
+                    Save Product
+
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+<!-- ========================= -->
+<!-- SCAN RESULT MODAL -->
+<!-- ========================= -->
+
+<div id="scan-result-modal"
+    class="fixed inset-0 bg-black/90 backdrop-blur-md z-[99999] hidden items-center justify-center p-4">
+
+    <div
+        class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-[3rem] overflow-hidden shadow-2xl">
+
+        <!-- IMAGE -->
+
+        <div class="relative h-72 overflow-hidden">
+
+            <img id="scan-product-image"
+                class="w-full h-full object-cover">
+
+            <div
+                class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
+
+            <div
+                class="absolute bottom-5 left-5 right-5">
+
+                <p id="scan-product-category"
+                    class="text-primary uppercase text-xs tracking-widest font-black mb-2">
+
+                    Category
+
+                </p>
+
+                <h1 id="scan-product-name"
+                    class="text-4xl font-black text-white leading-tight">
+
+                    Product Name
+
+                </h1>
 
             </div>
 
         </div>
 
-        `;
+        <!-- DETAILS -->
 
-    }).join("");
+        <div class="p-6 space-y-5">
 
-};
+            <div
+                class="grid grid-cols-2 gap-4">
 
-// =======================
-// EDIT
-// =======================
+                <div
+                    class="bg-slate-800 rounded-2xl p-4">
 
-window.editProduct = (id) => {
+                    <p
+                        class="text-slate-500 text-xs uppercase font-black mb-2">
 
-    const p =
-        localProducts.find(x => x.id === id);
+                        Stock
 
-    if (!p) return;
+                    </p>
 
-    openAddProductForm();
+                    <h2 id="scan-product-stock"
+                        class="text-white text-2xl font-black">
 
-    document.getElementById("form-id").value = p.id;
+                        0 pcs
 
-    document.getElementById("form-name").value = p.name;
+                    </h2>
 
-    document.getElementById("form-sku").value = p.sku;
+                </div>
 
-    document.getElementById("form-category").value =
-        p.category;
+                <div
+                    class="bg-slate-800 rounded-2xl p-4">
 
-    document.getElementById("form-cartons").value =
-        p.cartons;
+                    <p
+                        class="text-slate-500 text-xs uppercase font-black mb-2">
 
-    document.getElementById("form-pcs-per").value =
-        p.pcsPerCarton;
+                        Expiry
 
-    document.getElementById("form-total-pcs").value =
-        p.totalPieces;
+                    </p>
 
-    document.getElementById("form-carton-price").value =
-        p.cartonPrice;
+                    <h2 id="scan-product-expiry"
+                        class="text-yellow-400 text-lg font-black">
 
-    document.getElementById("form-piece-price").value =
-        p.piecePrice;
+                        00-00-0000
 
-    document.getElementById("form-expiry").value =
-        p.expiryDate;
+                    </h2>
 
-    const img =
-        document.getElementById("form-img-output");
+                </div>
 
-    img.src = p.image;
+            </div>
 
-    img.classList.remove("hidden");
+            <!-- MORE -->
 
-};
+            <div
+                class="bg-slate-800 rounded-[2rem] p-5 space-y-4">
 
-// =======================
-// DELETE
-// =======================
+                <div class="flex justify-between">
 
-window.deleteProduct = async (id) => {
+                    <span class="text-slate-400">
+                        Barcode
+                    </span>
 
-    const ok =
-        confirm("Delete product permanently?");
+                    <span id="scan-product-sku"
+                        class="font-black text-white">
 
-    if (!ok) return;
+                    </span>
 
-    await firestore
-        .collection("stockify_products")
-        .doc(id)
-        .delete();
+                </div>
 
-    syncData();
+                <div class="flex justify-between">
 
-};
+                    <span class="text-slate-400">
+                        Carton Price
+                    </span>
 
-// =======================
-// DASHBOARD
-// =======================
+                    <span id="scan-product-carton"
+                        class="font-black text-primary">
 
-window.renderDashboard = () => {
+                    </span>
 
-    const today = new Date();
+                </div>
 
-    let expired = 0;
+                <div class="flex justify-between">
 
-    let expiring = 0;
+                    <span class="text-slate-400">
+                        Piece Price
+                    </span>
 
-    const cat = {};
+                    <span id="scan-product-piece"
+                        class="font-black text-primary">
 
-    localProducts.forEach(p => {
+                    </span>
 
-        const exp =
-            new Date(p.expiryDate);
+                </div>
 
-        const diff =
-            (exp - today) /
-            (1000 * 60 * 60 * 24);
+            </div>
 
-        if (exp < today) expired++;
+            <!-- BUTTONS -->
 
-        if (diff <= 7 && diff >= 0) expiring++;
+            <div class="grid grid-cols-2 gap-4">
 
-        cat[p.category] =
-            (cat[p.category] || 0) + 1;
+                <button onclick="closeScanModal()"
+                    class="bg-slate-800 text-white py-5 rounded-2xl font-black uppercase">
 
-    });
+                    Close
 
-    document.getElementById("dash-total").innerText =
-        localProducts.length;
+                </button>
 
-    document.getElementById("dash-expired").innerText =
-        expired;
+                <button onclick="editProduct(document.getElementById('form-id').value)"
+                    class="bg-primary text-black py-5 rounded-2xl font-black uppercase">
 
-    document.getElementById("dash-expiring").innerText =
-        expiring;
+                    Edit
 
-    document.getElementById("dash-category").innerText =
-        Object.keys(cat).length;
+                </button>
 
-};
+            </div>
 
-// =======================
-// SCANNER
-// =======================
+        </div>
 
-window.startScanner = async () => {
+    </div>
 
-    if (scanner) return;
-
-    scanner =
-        new Html5Qrcode("scanner-container");
-
-    try {
-
-        await scanner.start(
-
-            {
-                facingMode: "environment"
-            },
-
-            {
-                fps: 10,
-                qrbox: 250
-            },
-
-            (decoded) => {
-
-                document
-                    .getElementById("scan-sound")
-                    .play();
-
-                const product =
-                    localProducts.find(
-                        p => p.sku === decoded
-                    );
-
-                // FOUND
-                if (product) {
-
-                    showScanResult(product);
-
-                }
-
-                // NOT FOUND
-                else {
-
-                    stopScanner();
-
-                    const add =
-                        confirm(
-                            "Product Not Found\n\nAdd New Product?"
-                        );
-
-                    if (add) {
-
-                        switchPage("products");
-
-                        openAddProductForm(decoded);
-
-                    }
-
-                }
-
-            }
-
-        );
-
-    } catch (err) {
-
-        console.log(err);
-
-    }
-
-};
-
-window.stopScanner = async () => {
-
-    if (!scanner) return;
-
-    await scanner.stop();
-
-    scanner = null;
-
-};
-
-// =======================
-// SCAN RESULT
-// =======================
-
-window.showScanResult = (p) => {
-
-    stopScanner();
-
-    document
-        .getElementById("scan-result-modal")
-        .classList.remove("hidden");
-
-    document
-        .getElementById("scan-result-modal")
-        .classList.add("flex");
-
-    document.getElementById("scan-product-image").src =
-        p.image;
-
-    document.getElementById("scan-product-name").innerText =
-        p.name;
-
-    document.getElementById("scan-product-category").innerText =
-        p.category;
-
-    document.getElementById("scan-product-stock").innerText =
-        p.totalPieces + " pcs";
-
-    document.getElementById("scan-product-expiry").innerText =
-        p.expiryDate;
-
-    document.getElementById("scan-product-sku").innerText =
-        p.sku;
-
-    document.getElementById("scan-product-carton").innerText =
-        "SAR " + p.cartonPrice;
-
-    document.getElementById("scan-product-piece").innerText =
-        "SAR " + p.piecePrice;
-
-};
-
-window.closeScanModal = () => {
-
-    document
-        .getElementById("scan-result-modal")
-        .classList.add("hidden");
-
-    startScanner();
-
-};
-
-// =======================
-// INIT
-// =======================
-
-document.addEventListener("DOMContentLoaded", async () => {
-
-    await initDB();
-
-    await syncData();
-
-    lucide.createIcons();
-
-});
+</div>
