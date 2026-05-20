@@ -1,12 +1,8 @@
-/**
- * STOCKIFY ULTRA FINAL
- * Developer: Sabbir Hosen Akash
- */
+// =====================
+// STOCKIFY PRO ULTRA FIXED ENGINE
+// =====================
 
-// =======================
 // FIREBASE
-// =======================
-
 const firebaseConfig = {
     apiKey: "AIzaSyBn3x2qSo8k6a9wrxNfLmVliWMmsUk8wfY",
     authDomain: "meetwoyou-436a2.firebaseapp.com",
@@ -17,757 +13,279 @@ const firebaseConfig = {
 };
 
 firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 
-const firestore = firebase.firestore();
-
-// =======================
-// CLOUDINARY
-// =======================
-
-const CLOUDINARY_URL =
-    "https://api.cloudinary.com/v1_1/dpgawb5sl/image/upload";
-
-const CLOUDINARY_PRESET = "Meetwoyou";
-
-// =======================
-// GLOBAL
-// =======================
-
-let localProducts = [];
-
-let localDB;
-
+// GLOBAL STATE
+let products = [];
 let currentFilter = "all";
-
 let scanner = null;
 
-let chart1 = null;
+// =====================
+// INIT
+// =====================
+document.addEventListener("DOMContentLoaded", () => {
+    loadProducts();
+    initScanner();
+    initCharts();
+});
 
-let chart2 = null;
+// =====================
+// LOAD PRODUCTS
+// =====================
+async function loadProducts() {
+    const snap = await db.collection("stockify_products").get();
+    products = snap.docs.map(d => d.data());
+    renderProducts();
+    updateDashboard();
+}
 
-// =======================
-// INDEXED DB
-// =======================
+// =====================
+// DASHBOARD
+// =====================
+function updateDashboard() {
+    const today = new Date();
 
-async function initDB() {
+    let expired = 0;
+    let expiring = 0;
+    let categories = new Set();
 
-    return new Promise((resolve, reject) => {
+    products.forEach(p => {
+        const exp = new Date(p.expiryDate);
+        categories.add(p.category);
 
-        const request = indexedDB.open("StockifyUltra", 1);
+        if (exp < today) expired++;
 
-        request.onupgradeneeded = (e) => {
-
-            const db = e.target.result;
-
-            if (!db.objectStoreNames.contains("products")) {
-
-                db.createObjectStore("products", {
-                    keyPath: "id"
-                });
-
-            }
-
-        };
-
-        request.onsuccess = (e) => {
-
-            localDB = e.target.result;
-
-            resolve();
-
-        };
-
-        request.onerror = reject;
-
+        let diff = (exp - today) / (1000 * 3600 * 24);
+        if (diff <= 7 && diff >= 0) expiring++;
     });
 
+    document.getElementById("dash-total").innerText = products.length;
+    document.getElementById("dash-expired").innerText = expired;
+    document.getElementById("dash-expiring").innerText = expiring;
+    document.getElementById("dash-category").innerText = categories.size;
 }
 
-// =======================
-// SYNC
-// =======================
-
-async function syncData() {
-
-    try {
-
-        const snapshot = await firestore
-            .collection("stockify_products")
-            .get();
-
-        localProducts = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        }));
-
-        renderProducts();
-
-        renderDashboard();
-
-    } catch (err) {
-
-        console.log(err);
-
-    }
-
-}
-
-// =======================
-// PAGE
-// =======================
-
-window.switchPage = (page) => {
-
-    document.querySelectorAll(".page-view")
-        .forEach(p => p.classList.add("hidden"));
-
-    document
-        .getElementById(`page-${page}`)
-        .classList.remove("hidden");
-
-    document.querySelectorAll(".nav-btn")
-        .forEach(btn => {
-
-            btn.classList.remove("text-primary");
-
-            if (btn.dataset.page === page) {
-
-                btn.classList.add("text-primary");
-
-            }
-
-        });
-
-    if (page === "scanner") {
-
-        startScanner();
-
-    } else {
-
-        stopScanner();
-
-    }
-
-};
-
-// =======================
-// THEME
-// =======================
-
-window.toggleTheme = () => {
-
-    document.documentElement.classList.toggle("dark");
-
-};
-
-// =======================
-// FILTER
-// =======================
-
-window.setFilter = (filter) => {
-
-    currentFilter = filter;
-
-    document.querySelectorAll(".filter-chip")
-        .forEach(btn => btn.classList.remove("active"));
-
-    event.target.classList.add("active");
-
-    renderProducts();
-
-};
-
-// =======================
-// FORM OPEN
-// =======================
-
-window.openAddProductForm = (barcode = "") => {
-
-    document
-        .getElementById("products-form-view")
-        .classList.remove("hidden");
-
-    document.getElementById("product-form").reset();
-
-    document.getElementById("form-id").value = "";
-
-    document.getElementById("form-sku").value = barcode;
-
-};
-
-window.closeProductForm = () => {
-
-    document
-        .getElementById("products-form-view")
-        .classList.add("hidden");
-
-};
-
-// =======================
-// IMAGE
-// =======================
-
-window.handleFormImage = (input) => {
-
-    if (!input.files[0]) return;
-
-    const reader = new FileReader();
-
-    reader.onload = (e) => {
-
-        const img =
-            document.getElementById("form-img-output");
-
-        img.src = e.target.result;
-
-        img.classList.remove("hidden");
-
-    };
-
-    reader.readAsDataURL(input.files[0]);
-
-};
-
-// =======================
-// CALCULATION
-// =======================
-
-window.calculateTotalPieces = () => {
-
-    const cartons =
-        parseInt(document.getElementById("form-cartons").value) || 0;
-
-    const per =
-        parseInt(document.getElementById("form-pcs-per").value) || 1;
-
-    document.getElementById("form-total-pcs").value =
-        cartons * per;
-
-};
-
-window.calculatePrices = (type) => {
-
-    const carton =
-        parseFloat(document.getElementById("form-carton-price").value) || 0;
-
-    const piece =
-        parseFloat(document.getElementById("form-piece-price").value) || 0;
-
-    const per =
-        parseInt(document.getElementById("form-pcs-per").value) || 1;
-
-    if (type === "carton") {
-
-        document.getElementById("form-piece-price").value =
-            (carton / per).toFixed(2);
-
-    } else {
-
-        document.getElementById("form-carton-price").value =
-            (piece * per).toFixed(2);
-
-    }
-
-};
-
-// =======================
-// SAVE PRODUCT
-// =======================
-
-window.saveProduct = async (e) => {
-
-    e.preventDefault();
-
-    try {
-
-        let imageUrl = "";
-
-        const file =
-            document.querySelector('input[type="file"]').files[0];
-
-        // upload image
-        if (file) {
-
-            const formData = new FormData();
-
-            formData.append("file", file);
-
-            formData.append("upload_preset", CLOUDINARY_PRESET);
-
-            const response = await fetch(CLOUDINARY_URL, {
-                method: "POST",
-                body: formData
-            });
-
-            const data = await response.json();
-
-            imageUrl = data.secure_url;
-
-        }
-
-        const id =
-            document.getElementById("form-id").value ||
-            Date.now().toString();
-
-        const old =
-            localProducts.find(p => p.id === id);
-
-        const payload = {
-
-            id,
-
-            name:
-                document.getElementById("form-name").value,
-
-            sku:
-                document.getElementById("form-sku").value,
-
-            category:
-                document.getElementById("form-category").value,
-
-            cartons:
-                document.getElementById("form-cartons").value,
-
-            pcsPerCarton:
-                document.getElementById("form-pcs-per").value,
-
-            totalPieces:
-                document.getElementById("form-total-pcs").value,
-
-            cartonPrice:
-                document.getElementById("form-carton-price").value,
-
-            piecePrice:
-                document.getElementById("form-piece-price").value,
-
-            expiryDate:
-                document.getElementById("form-expiry").value,
-
-            image:
-                imageUrl || old?.image || ""
-
-        };
-
-        await firestore
-            .collection("stockify_products")
-            .doc(id)
-            .set(payload);
-
-        closeProductForm();
-
-        syncData();
-
-        alert("Product Saved");
-
-    } catch (err) {
-
-        alert(err.message);
-
-    }
-
-};
-
-// =======================
+// =====================
 // RENDER PRODUCTS
-// =======================
+// =====================
+function renderProducts() {
+    const grid = document.getElementById("product-grid");
+    const search = document.getElementById("search-input")?.value?.toLowerCase() || "";
 
-window.renderProducts = () => {
-
-    const grid =
-        document.getElementById("product-grid");
-
-    if (!grid) return;
-
-    const search =
-        document.getElementById("search-input")
-        ?.value
-        ?.toLowerCase() || "";
+    let filtered = products.filter(p =>
+        p.name.toLowerCase().includes(search) ||
+        p.sku.toLowerCase().includes(search)
+    );
 
     const today = new Date();
 
-    let products = localProducts.filter(p => {
-
-        return (
-            p.name.toLowerCase().includes(search) ||
-            p.sku.includes(search)
-        );
-
-    });
-
     if (currentFilter === "expired") {
-
-        products = products.filter(
-            p => new Date(p.expiryDate) < today
-        );
-
+        filtered = filtered.filter(p => new Date(p.expiryDate) < today);
     }
 
     if (currentFilter === "expiring") {
-
-        products = products.filter(p => {
-
-            const diff =
-                (new Date(p.expiryDate) - today) /
-                (1000 * 60 * 60 * 24);
-
+        filtered = filtered.filter(p => {
+            const diff = (new Date(p.expiryDate) - today) / (1000 * 3600 * 24);
             return diff <= 7 && diff >= 0;
-
         });
-
     }
 
-    if (
-        currentFilter !== "all" &&
-        currentFilter !== "expired" &&
-        currentFilter !== "expiring"
-    ) {
-
-        products = products.filter(
-            p => p.category === currentFilter
-        );
-
+    if (currentFilter !== "all" && currentFilter !== "expired" && currentFilter !== "expiring") {
+        filtered = filtered.filter(p => p.category === currentFilter);
     }
 
-    grid.innerHTML = products.map(p => {
+    grid.innerHTML = filtered.map(p => `
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 cursor-pointer"
+            onclick="openDetails('${p.sku}')">
 
-        return `
+            <img src="${p.image}" class="h-40 w-full object-cover rounded-xl mb-3">
 
-        <div class="bg-slate-900 rounded-[2rem] overflow-hidden border border-slate-800">
+            <h3 class="font-black">${p.name}</h3>
+            <p class="text-xs text-slate-400">${p.sku}</p>
 
-            <div class="h-60 overflow-hidden">
-
-                <img src="${p.image}"
-                    class="w-full h-full object-cover">
-
+            <div class="flex justify-between mt-3 text-sm">
+                <span>${p.totalPieces} pcs</span>
+                <span class="text-primary">${p.category}</span>
             </div>
 
-            <div class="p-5">
+            <div class="flex justify-between mt-2 text-xs text-slate-400">
+                <span>CTN: ${p.cartonPrice}</span>
+                <span>PCS: ${p.piecePrice}</span>
+            </div>
 
-                <div class="flex justify-between mb-4">
+            <div class="flex gap-2 mt-3">
+                <button onclick="event.stopPropagation(); editProduct('${p.sku}')"
+                    class="bg-yellow-500 px-3 py-1 rounded text-black text-xs font-bold">
+                    Edit
+                </button>
 
-                    <div>
-
-                        <h2 class="text-2xl font-black">
-                            ${p.name}
-                        </h2>
-
-                        <p class="text-xs text-slate-500 mt-1 uppercase">
-                            ${p.category}
-                        </p>
-
-                    </div>
-
-                    <div class="text-primary font-black">
-                        ${p.totalPieces} pcs
-                    </div>
-
-                </div>
-
-                <div class="space-y-2 text-sm mb-5">
-
-                    <div class="flex justify-between">
-                        <span>Barcode</span>
-                        <span>${p.sku}</span>
-                    </div>
-
-                    <div class="flex justify-between">
-                        <span>Expiry</span>
-                        <span class="text-yellow-400">
-                            ${p.expiryDate}
-                        </span>
-                    </div>
-
-                </div>
-
-                <div class="grid grid-cols-2 gap-3">
-
-                    <button onclick="editProduct('${p.id}')"
-                        class="bg-primary text-black py-4 rounded-2xl font-black">
-
-                        Edit
-
-                    </button>
-
-                    <button onclick="deleteProduct('${p.id}')"
-                        class="bg-red-500/10 text-red-400 py-4 rounded-2xl font-black">
-
-                        Delete
-
-                    </button>
-
-                </div>
-
+                <button onclick="event.stopPropagation(); deleteProduct('${p.sku}')"
+                    class="bg-red-500 px-3 py-1 rounded text-white text-xs font-bold">
+                    Delete
+                </button>
             </div>
 
         </div>
+    `).join("");
+}
 
-        `;
+// =====================
+// SAVE / UPDATE
+// =====================
+async function saveProduct(e) {
+    e.preventDefault();
 
-    }).join("");
+    const id = document.getElementById("form-sku").value;
 
-};
+    const data = {
+        name: form("form-name"),
+        sku: form("form-sku"),
+        category: form("form-category"),
+        cartons: form("form-cartons"),
+        pcsPerCarton: form("form-pcs-per"),
+        totalPieces: form("form-total-pcs"),
+        cartonPrice: form("form-carton-price"),
+        piecePrice: form("form-piece-price"),
+        expiryDate: form("form-expiry"),
+        image: "https://via.placeholder.com/300"
+    };
 
-// =======================
+    await db.collection("stockify_products").doc(id).set(data);
+
+    closeProductForm();
+    loadProducts();
+}
+
+function form(id) {
+    return document.getElementById(id).value;
+}
+
+// =====================
+// DELETE
+// =====================
+async function deleteProduct(sku) {
+    if (!confirm("Delete product?")) return;
+
+    await db.collection("stockify_products").doc(sku).delete();
+    loadProducts();
+}
+
+// =====================
 // EDIT
-// =======================
-
-window.editProduct = (id) => {
-
-    const p =
-        localProducts.find(x => x.id === id);
-
+// =====================
+function editProduct(sku) {
+    const p = products.find(x => x.sku === sku);
     if (!p) return;
 
     openAddProductForm();
 
-    document.getElementById("form-id").value = p.id;
-
     document.getElementById("form-name").value = p.name;
-
     document.getElementById("form-sku").value = p.sku;
+    document.getElementById("form-category").value = p.category;
+    document.getElementById("form-cartons").value = p.cartons;
+    document.getElementById("form-pcs-per").value = p.pcsPerCarton;
+    document.getElementById("form-total-pcs").value = p.totalPieces;
+    document.getElementById("form-carton-price").value = p.cartonPrice;
+    document.getElementById("form-piece-price").value = p.piecePrice;
+    document.getElementById("form-expiry").value = p.expiryDate;
+}
 
-    document.getElementById("form-category").value =
-        p.category;
+// =====================
+// OPEN DETAILS
+// =====================
+function openDetails(sku) {
+    const p = products.find(x => x.sku === sku);
+    if (!p) return;
 
-    document.getElementById("form-cartons").value =
-        p.cartons;
+    alert(`
+NAME: ${p.name}
+SKU: ${p.sku}
+STOCK: ${p.totalPieces}
+CATEGORY: ${p.category}
+EXPIRE: ${p.expiryDate}
+    `);
+}
 
-    document.getElementById("form-pcs-per").value =
-        p.pcsPerCarton;
+// =====================
+// FILTER
+// =====================
+function setFilter(f) {
+    currentFilter = f;
+    renderProducts();
+}
 
-    document.getElementById("form-total-pcs").value =
-        p.totalPieces;
+// =====================
+// THEME
+// =====================
+function toggleTheme() {
+    document.documentElement.classList.toggle("dark");
+}
 
-    document.getElementById("form-carton-price").value =
-        p.cartonPrice;
+// =====================
+// NAV
+// =====================
+function switchPage(page) {
+    document.querySelectorAll(".page-view").forEach(p => p.classList.add("hidden"));
+    document.getElementById("page-" + page).classList.remove("hidden");
+}
 
-    document.getElementById("form-piece-price").value =
-        p.piecePrice;
-
-    document.getElementById("form-expiry").value =
-        p.expiryDate;
-
-    const img =
-        document.getElementById("form-img-output");
-
-    img.src = p.image;
-
-    img.classList.remove("hidden");
-
-};
-
-// =======================
-// DELETE
-// =======================
-
-window.deleteProduct = async (id) => {
-
-    const ok =
-        confirm("Delete product permanently?");
-
-    if (!ok) return;
-
-    await firestore
-        .collection("stockify_products")
-        .doc(id)
-        .delete();
-
-    syncData();
-
-};
-
-// =======================
-// DASHBOARD
-// =======================
-
-window.renderDashboard = () => {
-
-    const today = new Date();
-
-    let expired = 0;
-
-    let expiring = 0;
-
-    const cat = {};
-
-    localProducts.forEach(p => {
-
-        const exp =
-            new Date(p.expiryDate);
-
-        const diff =
-            (exp - today) /
-            (1000 * 60 * 60 * 24);
-
-        if (exp < today) expired++;
-
-        if (diff <= 7 && diff >= 0) expiring++;
-
-        cat[p.category] =
-            (cat[p.category] || 0) + 1;
-
-    });
-
-    document.getElementById("dash-total").innerText =
-        localProducts.length;
-
-    document.getElementById("dash-expired").innerText =
-        expired;
-
-    document.getElementById("dash-expiring").innerText =
-        expiring;
-
-    document.getElementById("dash-category").innerText =
-        Object.keys(cat).length;
-
-};
-
-// =======================
+// =====================
 // SCANNER
-// =======================
+// =====================
+function initScanner() {
+    scanner = new Html5Qrcode("scanner-container");
 
-window.startScanner = async () => {
+    scanner.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: 250 },
+        (decodedText) => handleScan(decodedText)
+    );
+}
 
-    if (scanner) return;
+// =====================
+// SCAN LOGIC (FIXED)
+// =====================
+function handleScan(code) {
 
-    scanner =
-        new Html5Qrcode("scanner-container");
+    playSound();
 
-    try {
+    const product = products.find(p => p.sku === code);
 
-        await scanner.start(
-
-            {
-                facingMode: "environment"
-            },
-
-            {
-                fps: 10,
-                qrbox: 250
-            },
-
-            (decoded) => {
-
-                document
-                    .getElementById("scan-sound")
-                    .play();
-
-                const product =
-                    localProducts.find(
-                        p => p.sku === decoded
-                    );
-
-                // FOUND
-                if (product) {
-
-                    showScanResult(product);
-
-                }
-
-                // NOT FOUND
-                else {
-
-                    stopScanner();
-
-                    const add =
-                        confirm(
-                            "Product Not Found\n\nAdd New Product?"
-                        );
-
-                    if (add) {
-
-                        switchPage("products");
-
-                        openAddProductForm(decoded);
-
-                    }
-
-                }
-
-            }
-
-        );
-
-    } catch (err) {
-
-        console.log(err);
-
+    if (product) {
+        showScanModal(product);
+    } else {
+        if (confirm("Product not found. Add new?")) {
+            openAddProductForm();
+            document.getElementById("form-sku").value = code;
+            switchPage("products");
+        }
     }
+}
 
-};
+// =====================
+// MODAL
+// =====================
+function showScanModal(p) {
+    document.getElementById("scan-product-image").src = p.image;
+    document.getElementById("scan-product-name").innerText = p.name;
+    document.getElementById("scan-product-category").innerText = p.category;
+    document.getElementById("scan-product-stock").innerText = p.totalPieces;
+    document.getElementById("scan-product-expiry").innerText = p.expiryDate;
+    document.getElementById("scan-product-sku").innerText = p.sku;
+    document.getElementById("scan-product-carton").innerText = p.cartonPrice;
+    document.getElementById("scan-product-piece").innerText = p.piecePrice;
 
-window.stopScanner = async () => {
+    document.getElementById("scan-result-modal").classList.remove("hidden");
+}
 
-    if (!scanner) return;
+// =====================
+function closeScanModal() {
+    document.getElementById("scan-result-modal").classList.add("hidden");
+}
 
-    await scanner.stop();
-
-    scanner = null;
-
-};
-
-// =======================
-// SCAN RESULT
-// =======================
-
-window.showScanResult = (p) => {
-
-    stopScanner();
-
-    document
-        .getElementById("scan-result-modal")
-        .classList.remove("hidden");
-
-    document
-        .getElementById("scan-result-modal")
-        .classList.add("flex");
-
-    document.getElementById("scan-product-image").src =
-        p.image;
-
-    document.getElementById("scan-product-name").innerText =
-        p.name;
-
-    document.getElementById("scan-product-category").innerText =
-        p.category;
-
-    document.getElementById("scan-product-stock").innerText =
-        p.totalPieces + " pcs";
-
-    document.getElementById("scan-product-expiry").innerText =
-        p.expiryDate;
-
-    document.getElementById("scan-product-sku").innerText =
-        p.sku;
-
-    document.getElementById("scan-product-carton").innerText =
-        "SAR " + p.cartonPrice;
-
-    document.getElementById("scan-product-piece").innerText =
-        "SAR " + p.piecePrice;
-
-};
-
-window.closeScanModal = () => {
-
-    document
-        .getElementById("scan-result-modal")
-        .classList.add("hidden");
-
-    startScanner();
-
-};
-
-// =======================
-// INIT
-// =======================
-
-document.addEventListener("DOMContentLoaded", async () => {
-
-    await initDB();
-
-    await syncData();
-
-    lucide.createIcons();
-
-});
+// =====================
+// SOUND
+// =====================
+function playSound() {
+    document.getElementById("scan-sound").play();
+}
