@@ -8,6 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
@@ -17,33 +18,50 @@
             darkMode: 'class',
             theme: {
                 extend: { 
-                    colors: { primary: '#16a34a', darkBg: '#0f172a', surface: '#1e293b' } 
+                    colors: { primary: '#16a34a', darkBg: '#0b1120', surface: '#1e293b' } 
                 }
             }
         }
     </script>
     <style>
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        body { -webkit-tap-highlight-color: transparent; }
+        body { -webkit-tap-highlight-color: transparent; font-family: 'Inter', sans-serif; }
         .filter-chip.active { background-color: #16a34a; color: white; border-color: #16a34a; }
-        .page-view { animation: slideUp 0.3s ease-out; }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .page-view { animation: slideUp 0.4s cubic-bezier(0, 0, 0.2, 1); }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
-<body class="bg-[#0b1120] text-slate-100 min-h-screen pb-24">
+<body class="bg-[#0b1120] text-slate-100 min-h-screen pb-28">
 
     <main class="p-6">
         
         <section id="page-dashboard" class="page-view hidden space-y-6">
-            <h1 class="text-2xl font-black">Dashboard</h1>
+            <header>
+                <h1 class="text-3xl font-black tracking-tight text-white">Overview</h1>
+                <p class="text-slate-500 text-xs font-bold uppercase tracking-widest">Sabbir's Inventory Status</p>
+            </header>
+
+            <div class="bg-surface/50 p-6 rounded-[2.5rem] border border-slate-800 shadow-2xl">
+                <h3 class="text-xs font-black text-slate-400 uppercase mb-4 text-center">Stock Analytics</h3>
+                <div class="h-48 w-full">
+                    <canvas id="stockChart"></canvas>
+                </div>
+            </div>
+
             <div class="grid grid-cols-2 gap-4">
                 <div class="bg-surface p-6 rounded-[2rem] border border-slate-800">
-                    <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Total Items</p>
-                    <h2 id="dash-total" class="text-3xl font-black mt-1">0</h2>
+                    <div class="flex justify-between items-start">
+                        <i data-lucide="package" class="w-5 h-5 text-primary"></i>
+                        <span class="text-[8px] font-black text-slate-500 uppercase">Live Items</span>
+                    </div>
+                    <h2 id="dash-total" class="text-4xl font-black mt-2 text-white">0</h2>
                 </div>
-                <div onclick="setFilter('expired')" class="bg-red-500/10 p-6 rounded-[2rem] border border-red-500/20 cursor-pointer">
-                    <p class="text-[10px] font-black text-red-400 uppercase tracking-widest">Expired</p>
-                    <h2 id="dash-expired" class="text-3xl font-black mt-1 text-red-500">0</h2>
+                <div onclick="setFilter('expired')" class="bg-red-500/10 p-6 rounded-[2rem] border border-red-500/20 cursor-pointer active:scale-95 transition-all">
+                    <div class="flex justify-between items-start">
+                        <i data-lucide="alert-triangle" class="w-5 h-5 text-red-500"></i>
+                        <span class="text-[8px] font-black text-red-400 uppercase">Expired</span>
+                    </div>
+                    <h2 id="dash-expired" class="text-4xl font-black mt-2 text-red-500">0</h2>
                 </div>
             </div>
         </section>
@@ -51,110 +69,172 @@
         <section id="page-products" class="page-view space-y-6">
             <div class="flex justify-between items-center">
                 <div>
-                    <h1 class="text-2xl font-black tracking-tight">Stock Management</h1>
-                    <p class="text-slate-400 text-xs font-medium">পণ্য ট্র্যাকিং ও ফিল্টারিং সিস্টেম।</p>
+                    <h1 class="text-3xl font-black tracking-tight text-white">Stock</h1>
+                    <p class="text-slate-400 text-[10px] font-black uppercase tracking-tighter">Management System</p>
                 </div>
-                <button onclick="openAddProductForm()" class="bg-primary hover:bg-green-700 text-white p-3 rounded-2xl transition-all active:scale-95 shadow-lg shadow-green-900/20">
-                    <i data-lucide="plus" class="w-5 h-5"></i>
+                <button onclick="openAddProductForm()" class="bg-primary text-white p-4 rounded-[1.5rem] shadow-lg shadow-green-900/30 active:scale-90 transition-all">
+                    <i data-lucide="plus" class="w-6 h-6"></i>
                 </button>
             </div>
 
             <div class="relative group">
                 <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500"></i>
-                <input id="search-input" oninput="renderProducts()" type="text" placeholder="Search by title or barcode..." 
-                    class="w-full bg-surface/50 border border-slate-700/50 rounded-2xl py-4 pl-12 pr-4 text-sm focus:ring-2 ring-primary outline-none transition-all">
+                <input id="search-input" oninput="renderProducts()" type="text" placeholder="Search by name or barcode..." 
+                    class="w-full bg-surface/50 border border-slate-800 rounded-2xl py-4 pl-12 pr-4 text-sm focus:ring-2 ring-primary outline-none transition-all">
             </div>
 
-            <div class="flex gap-2 overflow-x-auto no-scrollbar pb-2">
-                <button onclick="setFilter('expired')" class="filter-chip flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-surface border border-slate-700 text-[11px] font-bold text-red-500 whitespace-nowrap">
-                    ⚠️ Expired
-                </button>
-                <button onclick="setFilter('all')" class="filter-chip active px-4 py-2.5 rounded-xl bg-surface border border-slate-700 text-[11px] font-bold whitespace-nowrap">All</button>
-                <button onclick="setFilter('Grains')" class="filter-chip px-4 py-2.5 rounded-xl bg-surface border border-slate-700 text-[11px] font-bold text-slate-400 whitespace-nowrap">Grains</button>
-                <button onclick="setFilter('Dairy')" class="filter-chip px-4 py-2.5 rounded-xl bg-surface border border-slate-700 text-[11px] font-bold text-slate-400 whitespace-nowrap">Dairy</button>
-                <button onclick="setFilter('Beverages')" class="filter-chip px-4 py-2.5 rounded-xl bg-surface border border-slate-700 text-[11px] font-bold text-slate-400 whitespace-nowrap">Beverages</button>
-                <button onclick="setFilter('Snacks')" class="filter-chip px-4 py-2.5 rounded-xl bg-surface border border-slate-700 text-[11px] font-bold text-slate-400 whitespace-nowrap">Snacks</button>
+            <div class="flex gap-2 overflow-x-auto no-scrollbar py-2">
+                <button onclick="setFilter('expired')" class="filter-chip flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-surface border border-slate-800 text-[10px] font-black text-red-500 whitespace-nowrap uppercase">⚠️ Expired</button>
+                <button onclick="setFilter('all')" class="filter-chip active px-5 py-2.5 rounded-xl bg-surface border border-slate-800 text-[10px] font-black whitespace-nowrap uppercase">All</button>
+                <button onclick="setFilter('Grains')" class="filter-chip px-5 py-2.5 rounded-xl bg-surface border border-slate-800 text-[10px] font-black text-slate-400 whitespace-nowrap uppercase">Grains</button>
+                <button onclick="setFilter('Dairy')" class="filter-chip px-5 py-2.5 rounded-xl bg-surface border border-slate-800 text-[10px] font-black text-slate-400 whitespace-nowrap uppercase">Dairy</button>
+                <button onclick="setFilter('Beverages')" class="filter-chip px-5 py-2.5 rounded-xl bg-surface border border-slate-800 text-[10px] font-black text-slate-400 whitespace-nowrap uppercase">Beverages</button>
+                <button onclick="setFilter('Snacks')" class="filter-chip px-5 py-2.5 rounded-xl bg-surface border border-slate-800 text-[10px] font-black text-slate-400 whitespace-nowrap uppercase">Snacks</button>
             </div>
 
-            <div id="product-grid" class="grid grid-cols-1 gap-4 pb-10">
-                </div>
+            <div id="product-grid" class="grid grid-cols-1 gap-5 pb-10"></div>
         </section>
 
-        <section id="page-scanner" class="page-view hidden">
-            <h1 class="text-2xl font-black mb-6">Smart Scanner</h1>
-            <div class="relative aspect-square rounded-[3rem] overflow-hidden border-4 border-primary bg-black shadow-2xl">
+        <section id="page-scanner" class="page-view hidden text-center">
+            <h1 class="text-2xl font-black mb-8">AI Barcode Scan</h1>
+            <div class="relative max-w-sm mx-auto aspect-square rounded-[3.5rem] overflow-hidden border-4 border-primary bg-black shadow-2xl">
                 <div id="scanner-container" class="w-full h-full"></div>
-                <div class="absolute inset-0 border-[40px] border-black/40 pointer-events-none"></div>
+                <div class="absolute inset-0 border-[50px] border-black/40 pointer-events-none"></div>
+                <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-1 bg-primary shadow-[0_0_15px_#16a34a] animate-pulse"></div>
+            </div>
+            <p class="mt-6 text-slate-500 font-bold text-xs uppercase">Align barcode within the frame</p>
+        </section>
+
+        <section id="page-settings" class="page-view hidden space-y-6">
+            <div class="bg-surface p-10 rounded-[3.5rem] border border-slate-800 text-center shadow-2xl">
+                <div class="relative w-32 h-32 mx-auto mb-6 border-4 border-primary p-1 rounded-full shadow-2xl shadow-green-900/20">
+                    <img src="sabbir.jpg" alt="Sabbir" class="w-full h-full rounded-full object-cover bg-slate-800" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=Sabbir'">
+                </div>
+                <h2 class="text-2xl font-black text-white">Sabbir Hosen Akash</h2>
+                <p class="text-primary text-[10px] font-black uppercase tracking-[0.3em] mb-8">System Developer</p>
+                
+                <div class="space-y-3">
+                    <div class="bg-[#0b1120] p-5 rounded-[2rem] border border-slate-800 flex justify-between items-center group">
+                        <span class="text-xs font-bold text-slate-400 uppercase">Engine Status</span>
+                        <span class="bg-green-500/10 text-green-500 text-[10px] font-black px-3 py-1 rounded-full border border-green-500/20">LIVE / SYNCED</span>
+                    </div>
+                    <div class="bg-[#0b1120] p-5 rounded-[2rem] border border-slate-800 flex justify-between items-center">
+                        <span class="text-xs font-bold text-slate-400 uppercase">Database</span>
+                        <span class="text-white text-[10px] font-black">FIREBASE v9</span>
+                    </div>
+                </div>
+
+                <button onclick="window.location.reload()" class="mt-10 w-full bg-slate-800/50 py-5 rounded-[2rem] text-[10px] font-black text-slate-300 uppercase tracking-widest border border-slate-700 active:scale-95 transition-all">
+                    Restart Hybrid Engine
+                </button>
+                <p class="mt-6 text-[8px] text-slate-600 font-bold uppercase tracking-widest leading-relaxed">Meetwoyou Development Lab <br> Powered by Cloudinary & Firebase</p>
             </div>
         </section>
 
     </main>
 
-    <nav class="fixed bottom-0 left-0 right-0 bg-surface/80 backdrop-blur-xl border-t border-slate-800 h-20 flex items-center justify-around px-4 z-50">
-        <button onclick="switchPage('dashboard')" class="nav-btn flex flex-col items-center gap-1 text-slate-500" data-page="dashboard">
-            <i data-lucide="layout-grid"></i><span class="text-[10px] font-bold">Dashboard</span>
+    <nav class="fixed bottom-0 left-0 right-0 bg-surface/80 backdrop-blur-3xl border-t border-slate-800 h-24 flex items-center justify-around px-8 z-[100]">
+        <button onclick="switchPage('dashboard')" class="nav-btn flex flex-col items-center gap-1.5 text-slate-500 transition-all duration-300" data-page="dashboard">
+            <i data-lucide="layout-grid" class="w-6 h-6"></i><span class="text-[9px] font-black uppercase">Home</span>
         </button>
-        <button onclick="switchPage('products')" class="nav-btn flex flex-col items-center gap-1 text-primary" data-page="products">
-            <i data-lucide="package"></i><span class="text-[10px] font-bold">Products</span>
+        <button onclick="switchPage('products')" class="nav-btn flex flex-col items-center gap-1.5 text-primary transition-all duration-300" data-page="products">
+            <i data-lucide="package" class="w-6 h-6"></i><span class="text-[9px] font-black uppercase">Stock</span>
         </button>
-        <button onclick="switchPage('scanner')" class="nav-btn flex flex-col items-center gap-1 text-slate-500" data-page="scanner">
-            <i data-lucide="scan-line"></i><span class="text-[10px] font-bold">Scanner</span>
+        <button onclick="switchPage('scanner')" class="nav-btn flex flex-col items-center gap-1.5 text-slate-500 transition-all duration-300" data-page="scanner">
+            <i data-lucide="scan-line" class="w-6 h-6"></i><span class="text-[9px] font-black uppercase">Scan</span>
         </button>
-        <button onclick="switchPage('settings')" class="nav-btn flex flex-col items-center gap-1 text-slate-500" data-page="settings">
-            <i data-lucide="user-round"></i><span class="text-[10px] font-bold">Settings</span>
+        <button onclick="switchPage('settings')" class="nav-btn flex flex-col items-center gap-1.5 text-slate-500 transition-all duration-300" data-page="settings">
+            <i data-lucide="user-round" class="w-6 h-6"></i><span class="text-[9px] font-black uppercase">Dev</span>
         </button>
     </nav>
 
-    <div id="details-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] hidden items-end justify-center p-4">
-        <div class="bg-surface w-full max-w-md rounded-[3rem] p-8 space-y-6 animate-in slide-in-from-bottom duration-300 relative">
-            <button onclick="document.getElementById('details-modal').classList.add('hidden')" class="absolute top-6 right-6 bg-slate-800 p-2 rounded-full active:scale-90"><i data-lucide="x" class="w-4 h-4"></i></button>
-            <div class="h-48 rounded-[2rem] overflow-hidden bg-black shadow-inner">
+    <div id="details-modal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-[1000] hidden items-end justify-center p-4">
+        <div class="bg-surface w-full max-w-md rounded-[3.5rem] p-8 space-y-6 animate-in slide-in-from-bottom duration-500">
+            <div class="h-56 rounded-[2.5rem] overflow-hidden bg-black border-2 border-slate-800 shadow-2xl">
                 <img id="detail-img" class="w-full h-full object-cover">
             </div>
             <div class="space-y-1">
-                <span id="detail-category" class="bg-primary/20 text-primary text-[10px] px-3 py-1 rounded-lg font-black uppercase">Dairy</span>
-                <h2 id="detail-name" class="text-2xl font-black">Product Name</h2>
+                <span id="detail-category" class="bg-primary/20 text-primary text-[10px] px-3 py-1 rounded-lg font-black uppercase tracking-wider">Category</span>
+                <h2 id="detail-name" class="text-3xl font-black text-white">---</h2>
             </div>
-            <div class="space-y-3 pt-4 border-t border-slate-800">
-                <div class="flex items-center gap-4 text-sm"><i data-lucide="barcode" class="w-5 h-5 text-slate-500"></i><span class="text-slate-400">Barcode/SKU:</span><span id="detail-sku" class="font-mono font-bold ml-auto">---</span></div>
-                <div class="flex items-center gap-4 text-sm"><i data-lucide="layers" class="w-5 h-5 text-slate-500"></i><span class="text-slate-400">Volume Stock:</span><span id="detail-stock" class="font-bold ml-auto">---</span></div>
-                <div class="flex items-center gap-4 text-sm"><i data-lucide="banknote" class="w-5 h-5 text-slate-500"></i><span class="text-slate-400">Price Rate:</span><span class="ml-auto font-bold text-primary">Ctn: <span id="detail-ctn-price">0</span> | Pce: <span id="detail-pce-price">0</span></span></div>
-                <div class="flex items-center gap-4 text-sm"><i data-lucide="calendar" class="w-5 h-5 text-slate-500"></i><span class="text-slate-400">Expiration:</span><span id="detail-expiry" class="font-bold ml-auto text-orange-400">---</span></div>
+            <div class="grid grid-cols-2 gap-4 py-4 border-y border-slate-800/50">
+                <div class="space-y-1">
+                    <p class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Carton Price</p>
+                    <p class="text-lg font-black text-white">SAR <span id="detail-ctn-price">0</span></p>
+                </div>
+                <div class="space-y-1 border-l border-slate-800 pl-4">
+                    <p class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Piece Price</p>
+                    <p class="text-lg font-black text-primary">SAR <span id="detail-pce-price">0</span></p>
+                </div>
             </div>
-            <button onclick="document.getElementById('details-modal').classList.add('hidden')" class="w-full bg-slate-800 py-5 rounded-[2rem] font-black uppercase tracking-widest text-xs active:scale-95 transition-all">Close Sheet</button>
+            <div class="space-y-3 text-xs font-bold text-slate-400">
+                <div class="flex justify-between"><span>Barcode:</span><span id="detail-sku" class="text-white font-mono uppercase">---</span></div>
+                <div class="flex justify-between"><span>Total Inventory:</span><span id="detail-stock" class="text-white">---</span></div>
+                <div class="flex justify-between items-center"><span>Expiration:</span><span id="detail-expiry" class="bg-red-500/10 text-red-500 px-3 py-1 rounded-full text-[10px] font-black">---</span></div>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="document.getElementById('details-modal').classList.add('hidden')" class="flex-1 bg-slate-800 py-5 rounded-[2rem] font-black uppercase tracking-widest text-[10px] text-slate-400 active:scale-95 transition-all">Close</button>
+                <button id="delete-trigger-btn" class="bg-red-500/10 text-red-500 p-5 rounded-[2rem] active:scale-90 transition-all border border-red-500/20"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
+            </div>
         </div>
     </div>
 
-    <div id="products-form-view" class="fixed inset-0 bg-[#0b1120] z-[60] hidden overflow-y-auto p-6 pb-24">
-        <div class="flex justify-between items-center mb-6">
-            <h2 class="text-xl font-black uppercase">Add New Product</h2>
-            <button onclick="closeProductForm()" class="bg-surface p-2 rounded-full"><i data-lucide="x"></i></button>
+    <div id="products-form-view" class="fixed inset-0 bg-[#0b1120] z-[1000] hidden overflow-y-auto p-6 pb-24">
+        <div class="flex justify-between items-center mb-10">
+            <h2 class="text-2xl font-black uppercase text-white tracking-tight">Product Entry</h2>
+            <button onclick="closeProductForm()" class="bg-surface p-4 rounded-full active:scale-90"><i data-lucide="x"></i></button>
         </div>
-        <form id="product-form" onsubmit="saveProduct(event)" class="space-y-4">
+        
+        <form id="product-form" onsubmit="saveProduct(event)" class="space-y-5">
             <input type="hidden" id="form-id">
-            <div class="relative h-48 rounded-[2.5rem] overflow-hidden bg-surface border-2 border-dashed border-slate-700 group">
+            
+            <div class="relative h-56 rounded-[3rem] overflow-hidden bg-surface border-2 border-dashed border-slate-800 flex items-center justify-center group shadow-inner">
                 <img id="form-img-output" class="absolute inset-0 w-full h-full object-cover hidden">
-                <div id="image-placeholder" class="flex flex-col items-center justify-center h-full"><i data-lucide="camera" class="w-8 h-8 text-slate-500 mb-2"></i><p class="text-[10px] font-bold text-slate-500 uppercase">Product Image</p></div>
+                <div id="image-placeholder" class="text-center">
+                    <i data-lucide="camera" class="w-10 h-10 text-slate-600 mb-2 mx-auto"></i>
+                    <p class="text-[9px] font-black text-slate-600 uppercase tracking-widest">Select Product Photo</p>
+                </div>
                 <input type="file" accept="image/*" onchange="handleFormImage(this)" class="absolute inset-0 opacity-0 cursor-pointer">
             </div>
-            <input type="text" id="form-name" placeholder="Product Name" required class="w-full bg-surface p-5 rounded-2xl outline-none font-bold">
+
+            <input type="text" id="form-name" placeholder="Product Title" required class="w-full bg-surface p-6 rounded-[2rem] outline-none font-black text-white placeholder:text-slate-600 border border-transparent focus:border-primary transition-all shadow-lg shadow-black/20">
+            
             <div class="grid grid-cols-2 gap-4">
-                <input type="text" id="form-sku" placeholder="Barcode" required class="bg-surface p-5 rounded-2xl font-mono text-sm">
-                <select id="form-category" class="bg-surface p-5 rounded-2xl font-bold text-sm outline-none">
-                    <option value="Grains">Grains</option><option value="Dairy" selected>Dairy</option><option value="Beverages">Beverages</option><option value="Snacks">Snacks</option>
-                </select>
+                <div class="space-y-1">
+                    <label class="text-[9px] font-black text-slate-500 uppercase ml-4">SKU / Barcode</label>
+                    <input type="text" id="form-sku" required class="w-full bg-surface p-6 rounded-[2rem] font-mono text-sm text-white">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[9px] font-black text-slate-500 uppercase ml-4">Category</label>
+                    <select id="form-category" class="w-full bg-surface p-6 rounded-[2rem] font-black text-xs text-white appearance-none">
+                        <option value="Grains">Grains</option><option value="Dairy" selected>Dairy</option><option value="Beverages">Beverages</option><option value="Snacks">Snacks</option><option value="Packaged">Packaged</option>
+                    </select>
+                </div>
             </div>
-            <div class="bg-primary/5 p-5 rounded-[2rem] border border-primary/20 grid grid-cols-3 gap-2">
-                <div class="text-center"><label class="text-[8px] font-black text-slate-500 uppercase">Cartons</label><input type="number" id="form-cartons" value="1" oninput="calculateTotalPieces()" class="bg-transparent w-full text-center font-black text-lg outline-none"></div>
-                <div class="text-center border-x border-slate-800"><label class="text-[8px] font-black text-slate-500 uppercase">Pcs/Ctn</label><input type="number" id="form-pcs-per" value="10" oninput="calculateTotalPieces()" class="bg-transparent w-full text-center font-black text-lg outline-none"></div>
-                <div class="text-center"><label class="text-[8px] font-black text-primary uppercase">Total</label><input type="number" id="form-total-pcs" readonly class="bg-transparent w-full text-center font-black text-lg text-primary outline-none"></div>
+
+            <div class="bg-primary/5 p-6 rounded-[2.5rem] border border-primary/20 grid grid-cols-3 gap-2">
+                <div class="text-center"><label class="text-[8px] font-black text-slate-500 uppercase">Cartons</label><input type="number" id="form-cartons" value="1" oninput="calculateTotalPieces()" class="bg-transparent w-full text-center font-black text-xl text-white outline-none"></div>
+                <div class="text-center border-x border-slate-800"><label class="text-[8px] font-black text-slate-500 uppercase">Pcs/Ctn</label><input type="number" id="form-pcs-per" value="10" oninput="calculateTotalPieces()" class="bg-transparent w-full text-center font-black text-xl text-white outline-none"></div>
+                <div class="text-center"><label class="text-[8px] font-black text-primary uppercase">Total Stock</label><input type="number" id="form-total-pcs" readonly class="bg-transparent w-full text-center font-black text-xl text-primary outline-none"></div>
             </div>
+
             <div class="grid grid-cols-2 gap-4">
-                <input type="number" step="0.01" id="form-carton-price" placeholder="Ctn Price" oninput="calculatePrices('carton')" class="bg-surface p-5 rounded-2xl font-bold outline-none">
-                <input type="number" step="0.01" id="form-piece-price" placeholder="Pce Price" oninput="calculatePrices('piece')" class="bg-surface p-5 rounded-2xl font-bold outline-none">
+                <div class="space-y-1">
+                    <label class="text-[9px] font-black text-slate-500 uppercase ml-4">Ctn Price (SAR)</label>
+                    <input type="number" step="0.01" id="form-carton-price" oninput="calculatePrices('carton')" class="w-full bg-surface p-6 rounded-[2rem] font-black text-white">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[9px] font-black text-slate-500 uppercase ml-4">Pce Price (SAR)</label>
+                    <input type="number" step="0.01" id="form-piece-price" oninput="calculatePrices('piece')" class="w-full bg-surface p-6 rounded-[2rem] font-black text-primary">
+                </div>
             </div>
-            <input type="date" id="form-expiry" required class="bg-surface w-full p-5 rounded-2xl font-bold outline-none">
-            <button type="submit" id="save-btn" class="w-full bg-primary text-white py-5 rounded-[2rem] font-black uppercase tracking-widest shadow-xl shadow-green-900/40 active:scale-95 transition-all">Save & Sync</button>
+
+            <div class="space-y-1">
+                <label class="text-[9px] font-black text-slate-500 uppercase ml-4">Expiry Date</label>
+                <input type="date" id="form-expiry" required class="w-full bg-surface p-6 rounded-[2rem] font-black text-white uppercase">
+            </div>
+
+            <button type="submit" id="save-btn" class="w-full bg-primary text-white py-6 rounded-[2.5rem] font-black uppercase tracking-[0.2em] shadow-2xl shadow-green-900/40 active:scale-95 transition-all mt-4">Save & Sync Cloud</button>
         </form>
     </div>
 
