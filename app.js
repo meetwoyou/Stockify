@@ -3,7 +3,7 @@
  * Developed for: Sabbir Hosen Akash
  */
 
-// === 1. CONFIGURATION ===
+// === ১. কনফিগারেশন ===
 const firebaseConfig = {
     apiKey: "AIzaSyBn3x2qSo8k6a9wrxNfLmVliWMmsUk8wfY",
     authDomain: "meetwoyou-436a2.firebaseapp.com",
@@ -23,11 +23,12 @@ let localDB;
 let localProducts = [];
 let scanner = null;
 let compressedBase64 = null;
+let currentFilter = 'all';
 
-// === 2. DATABASE & SYNC ===
+// === ২. ডাটাবেস ইনিশিয়ালাইজেশন ===
 const initLocalDB = () => {
     return new Promise((resolve) => {
-        const request = indexedDB.open('StockifyDB_Final', 1);
+        const request = indexedDB.open('Stockify_Sabbir_v3', 1);
         request.onupgradeneeded = (e) => {
             const db = e.target.result;
             if (!db.objectStoreNames.contains('products')) db.createObjectStore('products', { keyPath: 'id' });
@@ -36,6 +37,7 @@ const initLocalDB = () => {
     });
 };
 
+// ডাটা সিঙ্ক্রোনাইজেশন
 window.syncData = async () => {
     const tx = localDB.transaction('products', 'readonly');
     const store = tx.objectStore('products');
@@ -52,11 +54,11 @@ window.syncData = async () => {
             localProducts = cloudData;
             renderDashboard();
             renderProducts();
-        } catch (err) { console.log("Cloud sync offline"); }
+        } catch (err) { console.log("Cloud offline"); }
     };
 };
 
-// === 3. IMAGE COMPRESSION (Target 200-300kb) ===
+// === ৩. ইমেজ কমপ্রেশন (২০০-৩০০ KB টার্গেট) ===
 window.compressImage = (file) => {
     return new Promise((resolve) => {
         const reader = new FileReader();
@@ -78,17 +80,32 @@ window.compressImage = (file) => {
                 canvas.height = height;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
-                resolve(canvas.toDataURL('image/jpeg', 0.7)); // 0.7 Quality for 200-300kb
+                // ০.৭ কোয়ালিটি ইমেজ সাইজ ২০০-৩০০ কেবি এর মধ্যে রাখে
+                resolve(canvas.toDataURL('image/jpeg', 0.7)); 
             };
         };
     });
 };
 
-// === 4. GLOBAL NAVIGATION & UI ===
+window.handleFormImage = async (input) => {
+    if (input.files && input.files[0]) {
+        compressedBase64 = await compressImage(input.files[0]);
+        document.getElementById('form-img-output').src = compressedBase64;
+        document.getElementById('form-img-output').classList.remove('hidden');
+        document.getElementById('image-placeholder').classList.add('hidden');
+    }
+};
+
+// === ৪. নেভিগেশন এবং ফিল্টারিং ===
 window.switchPage = (pageId) => {
     document.querySelectorAll('.page-view').forEach(p => p.classList.add('hidden'));
-    const target = document.getElementById(`page-${pageId}`);
-    if(target) target.classList.remove('hidden');
+    document.getElementById(`page-${pageId}`).classList.remove('hidden');
+
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+        const isTarget = btn.getAttribute('data-page') === pageId;
+        btn.classList.toggle('text-primary', isTarget);
+        btn.classList.toggle('text-slate-500', !isTarget);
+    });
 
     if (pageId === 'scanner') startScanner();
     else if (scanner) { scanner.stop(); scanner = null; }
@@ -96,42 +113,120 @@ window.switchPage = (pageId) => {
     lucide.createIcons();
 };
 
-window.handleFormImage = async (input) => {
-    if (input.files && input.files[0]) {
-        compressedBase64 = await compressImage(input.files[0]);
-        const output = document.getElementById('form-img-output');
-        if(output) {
-            output.src = compressedBase64;
-            output.classList.remove('hidden');
-        }
-        const placeholder = document.getElementById('image-placeholder');
-        if(placeholder) placeholder.classList.add('hidden');
-    }
+window.setFilter = (filter) => {
+    currentFilter = filter;
+    document.querySelectorAll('.filter-chip').forEach(btn => {
+        btn.classList.toggle('active', btn.innerText.includes(filter) || (filter === 'all' && btn.innerText === 'All'));
+    });
+    renderProducts();
 };
 
-window.openAddProductForm = (sku = '') => {
-    const list = document.getElementById('products-list-view');
-    const form = document.getElementById('products-form-view');
-    if(list) list.classList.add('hidden');
-    if(form) form.classList.remove('hidden');
+// === ৫. প্রোডাক্ট রেন্ডারিং ===
+window.renderProducts = () => {
+    const grid = document.getElementById('product-grid');
+    const search = document.getElementById('search-input').value.toLowerCase();
+    const today = new Date();
+
+    let filtered = localProducts.filter(p => p.name.toLowerCase().includes(search) || p.sku.includes(search));
     
+    if (currentFilter === 'expired') {
+        filtered = filtered.filter(p => new Date(p.expiryDate) < today);
+    } else if (currentFilter !== 'all') {
+        filtered = filtered.filter(p => p.category === currentFilter);
+    }
+
+    grid.innerHTML = filtered.map(p => {
+        const isExp = new Date(p.expiryDate) < today;
+        return `
+        <div onclick="viewProductDetails('${p.id}')" class="bg-surface p-4 rounded-[2.5rem] border-2 ${isExp ? 'border-red-500 bg-red-500/5' : 'border-transparent'} relative active:scale-95 transition-all">
+            <div class="h-36 rounded-3xl overflow-hidden mb-4 shadow-lg">
+                <img src="${p.image}" class="w-full h-full object-cover">
+                ${isExp ? '<span class="absolute top-6 right-6 bg-red-600 text-[8px] text-white px-2 py-1 rounded-full font-black uppercase">Expired</span>' : ''}
+            </div>
+            <div class="flex justify-between items-start">
+                <div>
+                    <h4 class="font-black text-sm uppercase">${p.name}</h4>
+                    <p class="text-[9px] font-bold text-slate-500 mt-0.5">Barcode: ${p.sku}</p>
+                </div>
+                <span class="bg-slate-800 text-[9px] px-2 py-1 rounded-md font-bold text-slate-400 uppercase">${p.category}</span>
+            </div>
+            <div class="flex justify-between items-center mt-4 pt-3 border-t border-slate-800">
+                <span class="text-xs font-black text-primary">${p.totalPieces} Pcs</span>
+                <div class="flex gap-4 text-[10px] font-bold text-slate-300">
+                    <span>Ctn: ${p.cartonPrice}</span>
+                    <span>Pce: ${p.piecePrice}</span>
+                </div>
+            </div>
+            <button onclick="event.stopPropagation(); deleteProduct('${p.id}')" class="absolute -top-1 -right-1 bg-red-500 text-white p-2 rounded-full shadow-lg opacity-0 hover:opacity-100 transition-opacity">
+                <i data-lucide="trash-2" class="w-3 h-3"></i>
+            </button>
+        </div>`;
+    }).join('');
+    lucide.createIcons();
+};
+
+// === ৬. ভিউ শিট (Details Modal) ===
+window.viewProductDetails = (id) => {
+    const p = localProducts.find(item => item.id === id);
+    if (!p) return;
+
+    const modal = document.getElementById('details-modal');
+    document.getElementById('detail-img').src = p.image;
+    document.getElementById('detail-name').innerText = p.name;
+    document.getElementById('detail-category').innerText = p.category;
+    document.getElementById('detail-sku').innerText = p.sku;
+    document.getElementById('detail-stock').innerText = `${p.cartons} Cartons × ${p.pcsPerCarton} (${p.totalPieces} Pcs)`;
+    document.getElementById('detail-ctn-price').innerText = p.cartonPrice;
+    document.getElementById('detail-pce-price').innerText = p.piecePrice;
+    document.getElementById('detail-expiry').innerText = p.expiryDate;
+
+    const expiryLabel = document.getElementById('detail-expiry');
+    const isExp = new Date(p.expiryDate) < new Date();
+    expiryLabel.classList.toggle('text-red-500', isExp);
+    expiryLabel.classList.toggle('text-orange-400', !isExp);
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    lucide.createIcons();
+};
+
+// === ৭. স্ক্যানার লজিক (অটো-অ্যাড ফিচার) ===
+window.startScanner = () => {
+    scanner = new Html5Qrcode("scanner-container");
+    scanner.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, (decoded) => {
+        const match = localProducts.find(p => p.sku === decoded);
+        if (match) {
+            scanner.stop();
+            viewProductDetails(match.id);
+        } else {
+            scanner.stop();
+            // অটোমেটিক অ্যাড অপশন
+            if(confirm("প্রোডাক্ট পাওয়া যায়নি!\nবারকোড: " + decoded + "\nআপনি কি এটি নতুন পণ্য হিসেবে যোগ করতে চান?")) {
+                openAddProductForm(decoded);
+            } else {
+                startScanner();
+            }
+        }
+    }).catch(err => console.error("Scanner Error", err));
+};
+
+// === ৮. ফরম কন্ট্রোল এবং সেভ ===
+window.openAddProductForm = (sku = '') => {
+    document.getElementById('products-form-view').classList.remove('hidden');
     document.getElementById('product-form').reset();
     document.getElementById('form-id').value = '';
     document.getElementById('form-sku').value = sku;
-    
-    const output = document.getElementById('form-img-output');
-    if(output) { output.src = ''; output.classList.add('hidden'); }
-    const placeholder = document.getElementById('image-placeholder');
-    if(placeholder) placeholder.classList.remove('hidden');
+    document.getElementById('form-img-output').src = '';
+    document.getElementById('form-img-output').classList.add('hidden');
+    document.getElementById('image-placeholder').classList.remove('hidden');
     compressedBase64 = null;
+    calculateTotalPieces();
 };
 
 window.closeProductForm = () => {
     document.getElementById('products-form-view').classList.add('hidden');
-    document.getElementById('products-list-view').classList.remove('hidden');
 };
 
-// === 5. CALCULATION & CRUD ===
 window.calculateTotalPieces = () => {
     const cartons = parseInt(document.getElementById('form-cartons').value) || 0;
     const perCtn = parseInt(document.getElementById('form-pcs-per').value) || 1;
@@ -152,19 +247,19 @@ window.calculatePrices = (source) => {
 
 window.saveProduct = async (e) => {
     e.preventDefault();
-    const btn = document.getElementById('save-btn');
-    btn.innerText = "Syncing..."; btn.disabled = true;
+    const saveBtn = document.getElementById('save-btn');
+    saveBtn.innerText = "Syncing..."; saveBtn.disabled = true;
 
     try {
-        let finalUrl = document.getElementById('form-img-output').src;
+        let finalImageUrl = document.getElementById('form-img-output').src;
 
         if (compressedBase64) {
-            const fd = new FormData();
-            fd.append('file', compressedBase64);
-            fd.append('upload_preset', CLOUDINARY_PRESET);
-            const res = await fetch(CLOUDINARY_URL, { method: 'POST', body: fd });
+            const formData = new FormData();
+            formData.append('file', compressedBase64);
+            formData.append('upload_preset', CLOUDINARY_PRESET);
+            const res = await fetch(CLOUDINARY_URL, { method: 'POST', body: formData });
             const data = await res.json();
-            finalUrl = data.secure_url;
+            finalImageUrl = data.secure_url;
         }
 
         const id = document.getElementById('form-id').value || Date.now().toString();
@@ -179,7 +274,7 @@ window.saveProduct = async (e) => {
             cartonPrice: document.getElementById('form-carton-price').value,
             piecePrice: document.getElementById('form-piece-price').value,
             expiryDate: document.getElementById('form-expiry').value,
-            image: finalUrl,
+            image: finalImageUrl,
             updatedAt: Date.now()
         };
 
@@ -189,114 +284,11 @@ window.saveProduct = async (e) => {
 
         closeProductForm();
         syncData();
-    } catch (err) { alert(err.message); }
-    finally { btn.innerText = "Save & Cloud Backup"; btn.disabled = false; }
+    } catch (err) { alert("Error: " + err.message); }
+    finally { saveBtn.innerText = "Save & Sync"; saveBtn.disabled = false; }
 };
 
-// === 6. RENDER ENGINE ===
-window.renderProducts = (filter = 'all') => {
-    const grid = document.getElementById('product-grid');
-    const search = document.getElementById('search-input').value.toLowerCase();
-    const today = new Date();
-
-    let filtered = localProducts.filter(p => p.name.toLowerCase().includes(search) || p.sku.includes(search));
-    if (filter === 'expired') filtered = filtered.filter(p => new Date(p.expiryDate) < today);
-
-    grid.innerHTML = filtered.map(p => {
-        const isExp = new Date(p.expiryDate) < today;
-        return `
-        <div class="bg-white dark:bg-slate-800 p-4 rounded-[2.5rem] border-2 ${isExp ? 'border-red-500 bg-red-50/10' : 'border-transparent'} shadow-sm relative">
-            <div class="h-32 rounded-3xl overflow-hidden mb-3">
-                <img src="${p.image}" class="w-full h-full object-cover">
-                ${isExp ? '<div class="absolute top-6 right-6 bg-red-600 text-[8px] text-white px-2 py-1 rounded-full font-black">EXPIRED</div>' : ''}
-            </div>
-            <h4 class="font-black text-sm uppercase truncate">${p.name}</h4>
-            <div class="flex justify-between mt-1"><span class="text-[9px] font-bold text-slate-400">Barcode: ${p.sku}</span> <span class="text-[10px] font-black text-green-600">${p.totalPieces} Pcs</span></div>
-            <div class="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-slate-100 dark:border-slate-700">
-                <div class="text-[9px] font-bold">Ctn: ${p.cartonPrice}</div>
-                <div class="text-[9px] font-bold">Pcs: ${p.piecePrice}</div>
-            </div>
-            <div class="flex gap-2 mt-4">
-                <button onclick="editProductTrigger('${p.id}')" class="flex-1 bg-slate-100 dark:bg-slate-700 py-2 rounded-xl text-[10px] font-black">EDIT</button>
-                <button onclick="deleteProductTrigger('${p.id}')" class="p-2 text-red-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-            </div>
-        </div>`;
-    }).join('');
-    lucide.createIcons();
-};
-
-window.renderDashboard = () => {
-    const today = new Date();
-    let totalPcs = 0, expCount = 0;
-    localProducts.forEach(p => {
-        totalPcs += parseInt(p.totalPieces || 0);
-        if (new Date(p.expiryDate) < today) expCount++;
-    });
-    document.getElementById('dash-total').innerText = localProducts.length;
-    document.getElementById('dash-pieces').innerText = totalPcs;
-    document.getElementById('dash-expired').innerText = expCount;
-};
-
-// === 7. SMART SCANNER ===
-window.startScanner = () => {
-    scanner = new Html5Qrcode("scanner-container");
-    scanner.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, (decoded) => {
-        const match = localProducts.find(p => p.sku === decoded);
-        if (match) {
-            scanner.stop();
-            showProductModal(match);
-        } else {
-            scanner.stop();
-            if(confirm("Barcode: " + decoded + "\nProduct not found. Add now?")) {
-                openAddProductForm(decoded);
-            } else { startScanner(); }
-        }
-    });
-};
-
-function showProductModal(p) {
-    const modal = document.getElementById('details-modal');
-    if(!modal) return;
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
-    modal.innerHTML = `
-    <div class="bg-white dark:bg-slate-800 p-8 rounded-[3.5rem] w-full max-w-sm shadow-2xl animate-in zoom-in-95">
-        <img src="${p.image}" class="w-full h-40 object-cover rounded-3xl mb-6">
-        <h2 class="text-xl font-black uppercase">${p.name}</h2>
-        <p class="text-primary font-black text-lg mb-4">Price: ${p.piecePrice} SAR</p>
-        <div class="grid grid-cols-2 gap-4 text-[10px] font-black uppercase text-slate-400 mb-6">
-            <div class="bg-slate-50 dark:bg-slate-900 p-3 rounded-2xl">Stock: <span class="text-slate-900 dark:text-white">${p.totalPieces}</span></div>
-            <div class="bg-slate-50 dark:bg-slate-900 p-3 rounded-2xl">Exp: <span class="${new Date(p.expiryDate) < new Date() ? 'text-red-500' : 'text-slate-900 dark:text-white'}">${p.expiryDate}</span></div>
-        </div>
-        <div class="flex gap-2">
-            <button onclick="document.getElementById('details-modal').classList.add('hidden')" class="flex-1 py-4 bg-slate-100 dark:bg-slate-700 rounded-2xl font-black text-xs">CLOSE</button>
-            <button onclick="document.getElementById('details-modal').classList.add('hidden'); editProductTrigger('${p.id}')" class="flex-1 py-4 bg-primary text-white rounded-2xl font-black text-xs">EDIT</button>
-        </div>
-    </div>`;
-}
-
-// === 8. EDIT & DELETE ===
-window.editProductTrigger = (id) => {
-    const p = localProducts.find(x => x.id === id);
-    if (!p) return;
-    openAddProductForm();
-    document.getElementById('form-id').value = p.id;
-    document.getElementById('form-name').value = p.name;
-    document.getElementById('form-sku').value = p.sku;
-    document.getElementById('form-category').value = p.category;
-    document.getElementById('form-cartons').value = p.cartons;
-    document.getElementById('form-pcs-per').value = p.pcsPerCarton;
-    document.getElementById('form-total-pcs').value = p.totalPieces;
-    document.getElementById('form-carton-price').value = p.cartonPrice;
-    document.getElementById('form-piece-price').value = p.piecePrice;
-    document.getElementById('form-expiry').value = p.expiryDate;
-    const output = document.getElementById('form-img-output');
-    output.src = p.image;
-    output.classList.remove('hidden');
-    document.getElementById('image-placeholder').classList.add('hidden');
-};
-
-window.deleteProductTrigger = async (id) => {
+window.deleteProduct = async (id) => {
     if (confirm("Delete permanently?")) {
         const tx = localDB.transaction('products', 'readwrite');
         tx.objectStore('products').delete(id);
@@ -305,14 +297,18 @@ window.deleteProductTrigger = async (id) => {
     }
 };
 
-window.toggleTheme = () => {
-    document.documentElement.classList.toggle('dark');
-    localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+window.renderDashboard = () => {
+    const today = new Date();
+    let expCount = 0;
+    localProducts.forEach(p => {
+        if (new Date(p.expiryDate) < today) expCount++;
+    });
+    document.getElementById('dash-total').innerText = localProducts.length;
+    document.getElementById('dash-expired').innerText = expCount;
 };
 
-// === 9. INIT ===
+// === ৯. স্টার্ট অ্যাপ ===
 document.addEventListener('DOMContentLoaded', async () => {
-    if (localStorage.getItem('theme') === 'dark') document.documentElement.classList.add('dark');
     await initLocalDB();
     syncData();
     lucide.createIcons();
