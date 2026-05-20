@@ -1,503 +1,773 @@
-<!-- ========================= -->
-<!-- SCAN SOUND -->
-<!-- ========================= -->
+/**
+ * STOCKIFY ULTRA FINAL
+ * Developer: Sabbir Hosen Akash
+ */
 
-<audio id="scan-sound" preload="auto">
-    <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg">
-</audio>
+// =======================
+// FIREBASE
+// =======================
 
-<!-- ========================= -->
-<!-- PRODUCT ADD / EDIT FORM -->
-<!-- ========================= -->
+const firebaseConfig = {
+    apiKey: "AIzaSyBn3x2qSo8k6a9wrxNfLmVliWMmsUk8wfY",
+    authDomain: "meetwoyou-436a2.firebaseapp.com",
+    projectId: "meetwoyou-436a2",
+    storageBucket: "meetwoyou-436a2.firebasestorage.app",
+    messagingSenderId: "612788132077",
+    appId: "1:612788132077:web:0a8b92edf26778efd4d4e4"
+};
 
-<div id="products-form-view"
-    class="fixed inset-0 z-[9999] bg-[#0b1120] overflow-y-auto hidden">
+firebase.initializeApp(firebaseConfig);
 
-    <div class="max-w-5xl mx-auto p-4 md:p-10">
+const firestore = firebase.firestore();
 
-        <!-- HEADER -->
+// =======================
+// CLOUDINARY
+// =======================
 
-        <div class="flex items-center justify-between mb-8">
+const CLOUDINARY_URL =
+    "https://api.cloudinary.com/v1_1/dpgawb5sl/image/upload";
 
-            <div>
-                <h1 class="text-3xl md:text-5xl font-black text-white">
-                    Product Manager
-                </h1>
+const CLOUDINARY_PRESET = "Meetwoyou";
 
-                <p class="text-slate-500 uppercase text-xs font-black tracking-widest mt-2">
-                    Add / Edit Product
-                </p>
+// =======================
+// GLOBAL
+// =======================
+
+let localProducts = [];
+
+let localDB;
+
+let currentFilter = "all";
+
+let scanner = null;
+
+let chart1 = null;
+
+let chart2 = null;
+
+// =======================
+// INDEXED DB
+// =======================
+
+async function initDB() {
+
+    return new Promise((resolve, reject) => {
+
+        const request = indexedDB.open("StockifyUltra", 1);
+
+        request.onupgradeneeded = (e) => {
+
+            const db = e.target.result;
+
+            if (!db.objectStoreNames.contains("products")) {
+
+                db.createObjectStore("products", {
+                    keyPath: "id"
+                });
+
+            }
+
+        };
+
+        request.onsuccess = (e) => {
+
+            localDB = e.target.result;
+
+            resolve();
+
+        };
+
+        request.onerror = reject;
+
+    });
+
+}
+
+// =======================
+// SYNC
+// =======================
+
+async function syncData() {
+
+    try {
+
+        const snapshot = await firestore
+            .collection("stockify_products")
+            .get();
+
+        localProducts = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+
+        renderProducts();
+
+        renderDashboard();
+
+    } catch (err) {
+
+        console.log(err);
+
+    }
+
+}
+
+// =======================
+// PAGE
+// =======================
+
+window.switchPage = (page) => {
+
+    document.querySelectorAll(".page-view")
+        .forEach(p => p.classList.add("hidden"));
+
+    document
+        .getElementById(`page-${page}`)
+        .classList.remove("hidden");
+
+    document.querySelectorAll(".nav-btn")
+        .forEach(btn => {
+
+            btn.classList.remove("text-primary");
+
+            if (btn.dataset.page === page) {
+
+                btn.classList.add("text-primary");
+
+            }
+
+        });
+
+    if (page === "scanner") {
+
+        startScanner();
+
+    } else {
+
+        stopScanner();
+
+    }
+
+};
+
+// =======================
+// THEME
+// =======================
+
+window.toggleTheme = () => {
+
+    document.documentElement.classList.toggle("dark");
+
+};
+
+// =======================
+// FILTER
+// =======================
+
+window.setFilter = (filter) => {
+
+    currentFilter = filter;
+
+    document.querySelectorAll(".filter-chip")
+        .forEach(btn => btn.classList.remove("active"));
+
+    event.target.classList.add("active");
+
+    renderProducts();
+
+};
+
+// =======================
+// FORM OPEN
+// =======================
+
+window.openAddProductForm = (barcode = "") => {
+
+    document
+        .getElementById("products-form-view")
+        .classList.remove("hidden");
+
+    document.getElementById("product-form").reset();
+
+    document.getElementById("form-id").value = "";
+
+    document.getElementById("form-sku").value = barcode;
+
+};
+
+window.closeProductForm = () => {
+
+    document
+        .getElementById("products-form-view")
+        .classList.add("hidden");
+
+};
+
+// =======================
+// IMAGE
+// =======================
+
+window.handleFormImage = (input) => {
+
+    if (!input.files[0]) return;
+
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+
+        const img =
+            document.getElementById("form-img-output");
+
+        img.src = e.target.result;
+
+        img.classList.remove("hidden");
+
+    };
+
+    reader.readAsDataURL(input.files[0]);
+
+};
+
+// =======================
+// CALCULATION
+// =======================
+
+window.calculateTotalPieces = () => {
+
+    const cartons =
+        parseInt(document.getElementById("form-cartons").value) || 0;
+
+    const per =
+        parseInt(document.getElementById("form-pcs-per").value) || 1;
+
+    document.getElementById("form-total-pcs").value =
+        cartons * per;
+
+};
+
+window.calculatePrices = (type) => {
+
+    const carton =
+        parseFloat(document.getElementById("form-carton-price").value) || 0;
+
+    const piece =
+        parseFloat(document.getElementById("form-piece-price").value) || 0;
+
+    const per =
+        parseInt(document.getElementById("form-pcs-per").value) || 1;
+
+    if (type === "carton") {
+
+        document.getElementById("form-piece-price").value =
+            (carton / per).toFixed(2);
+
+    } else {
+
+        document.getElementById("form-carton-price").value =
+            (piece * per).toFixed(2);
+
+    }
+
+};
+
+// =======================
+// SAVE PRODUCT
+// =======================
+
+window.saveProduct = async (e) => {
+
+    e.preventDefault();
+
+    try {
+
+        let imageUrl = "";
+
+        const file =
+            document.querySelector('input[type="file"]').files[0];
+
+        // upload image
+        if (file) {
+
+            const formData = new FormData();
+
+            formData.append("file", file);
+
+            formData.append("upload_preset", CLOUDINARY_PRESET);
+
+            const response = await fetch(CLOUDINARY_URL, {
+                method: "POST",
+                body: formData
+            });
+
+            const data = await response.json();
+
+            imageUrl = data.secure_url;
+
+        }
+
+        const id =
+            document.getElementById("form-id").value ||
+            Date.now().toString();
+
+        const old =
+            localProducts.find(p => p.id === id);
+
+        const payload = {
+
+            id,
+
+            name:
+                document.getElementById("form-name").value,
+
+            sku:
+                document.getElementById("form-sku").value,
+
+            category:
+                document.getElementById("form-category").value,
+
+            cartons:
+                document.getElementById("form-cartons").value,
+
+            pcsPerCarton:
+                document.getElementById("form-pcs-per").value,
+
+            totalPieces:
+                document.getElementById("form-total-pcs").value,
+
+            cartonPrice:
+                document.getElementById("form-carton-price").value,
+
+            piecePrice:
+                document.getElementById("form-piece-price").value,
+
+            expiryDate:
+                document.getElementById("form-expiry").value,
+
+            image:
+                imageUrl || old?.image || ""
+
+        };
+
+        await firestore
+            .collection("stockify_products")
+            .doc(id)
+            .set(payload);
+
+        closeProductForm();
+
+        syncData();
+
+        alert("Product Saved");
+
+    } catch (err) {
+
+        alert(err.message);
+
+    }
+
+};
+
+// =======================
+// RENDER PRODUCTS
+// =======================
+
+window.renderProducts = () => {
+
+    const grid =
+        document.getElementById("product-grid");
+
+    if (!grid) return;
+
+    const search =
+        document.getElementById("search-input")
+        ?.value
+        ?.toLowerCase() || "";
+
+    const today = new Date();
+
+    let products = localProducts.filter(p => {
+
+        return (
+            p.name.toLowerCase().includes(search) ||
+            p.sku.includes(search)
+        );
+
+    });
+
+    if (currentFilter === "expired") {
+
+        products = products.filter(
+            p => new Date(p.expiryDate) < today
+        );
+
+    }
+
+    if (currentFilter === "expiring") {
+
+        products = products.filter(p => {
+
+            const diff =
+                (new Date(p.expiryDate) - today) /
+                (1000 * 60 * 60 * 24);
+
+            return diff <= 7 && diff >= 0;
+
+        });
+
+    }
+
+    if (
+        currentFilter !== "all" &&
+        currentFilter !== "expired" &&
+        currentFilter !== "expiring"
+    ) {
+
+        products = products.filter(
+            p => p.category === currentFilter
+        );
+
+    }
+
+    grid.innerHTML = products.map(p => {
+
+        return `
+
+        <div class="bg-slate-900 rounded-[2rem] overflow-hidden border border-slate-800">
+
+            <div class="h-60 overflow-hidden">
+
+                <img src="${p.image}"
+                    class="w-full h-full object-cover">
+
             </div>
 
-            <button onclick="closeProductForm()"
-                class="w-14 h-14 rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center active:scale-90">
+            <div class="p-5">
 
-                <i data-lucide="x" class="w-6 h-6"></i>
+                <div class="flex justify-between mb-4">
 
-            </button>
+                    <div>
 
-        </div>
+                        <h2 class="text-2xl font-black">
+                            ${p.name}
+                        </h2>
 
-        <!-- FORM -->
+                        <p class="text-xs text-slate-500 mt-1 uppercase">
+                            ${p.category}
+                        </p>
 
-        <form id="product-form"
-            onsubmit="saveProduct(event)"
-            class="grid lg:grid-cols-2 gap-6">
+                    </div>
 
-            <!-- LEFT -->
-
-            <div class="space-y-5">
-
-                <!-- IMAGE -->
-
-                <div
-                    class="bg-slate-900 border border-slate-800 rounded-[2rem] p-5">
-
-                    <div
-                        class="relative h-72 rounded-[2rem] overflow-hidden border-2 border-dashed border-slate-700 flex items-center justify-center">
-
-                        <img id="form-img-output"
-                            class="absolute inset-0 w-full h-full object-cover hidden">
-
-                        <div id="image-placeholder"
-                            class="text-center">
-
-                            <i data-lucide="image-plus"
-                                class="w-14 h-14 mx-auto text-slate-600 mb-4"></i>
-
-                            <p
-                                class="text-slate-500 uppercase text-xs font-black tracking-widest">
-
-                                Upload Product Photo
-
-                            </p>
-
-                        </div>
-
-                        <input type="file"
-                            accept="image/*"
-                            onchange="handleFormImage(this)"
-                            class="absolute inset-0 opacity-0 cursor-pointer">
-
+                    <div class="text-primary font-black">
+                        ${p.totalPieces} pcs
                     </div>
 
                 </div>
 
-                <!-- PRODUCT NAME -->
-
-                <div
-                    class="bg-slate-900 border border-slate-800 rounded-[2rem] p-5">
-
-                    <label
-                        class="text-xs uppercase text-slate-500 font-black tracking-widest block mb-3">
-
-                        Product Name
-
-                    </label>
-
-                    <input type="text"
-                        id="form-name"
-                        required
-                        placeholder="Enter product name"
-                        class="w-full bg-transparent text-white text-xl font-black outline-none">
-
-                </div>
-
-                <!-- SKU -->
-
-                <div
-                    class="bg-slate-900 border border-slate-800 rounded-[2rem] p-5">
-
-                    <label
-                        class="text-xs uppercase text-slate-500 font-black tracking-widest block mb-3">
-
-                        Barcode / SKU
-
-                    </label>
-
-                    <input type="text"
-                        id="form-sku"
-                        required
-                        placeholder="Barcode"
-                        class="w-full bg-transparent text-white text-xl font-black outline-none">
-
-                </div>
-
-                <!-- CATEGORY -->
-
-                <div
-                    class="bg-slate-900 border border-slate-800 rounded-[2rem] p-5">
-
-                    <label
-                        class="text-xs uppercase text-slate-500 font-black tracking-widest block mb-3">
-
-                        Category
-
-                    </label>
-
-                    <select id="form-category"
-                        class="w-full bg-transparent text-white text-lg font-black outline-none">
-
-                        <option value="Beverages">Beverages</option>
-
-                        <option value="Soft Drinks">Soft Drinks</option>
-
-                        <option value="Energy Drinks">Energy Drinks</option>
-
-                        <option value="Snacks">Snacks</option>
-
-                        <option value="Chocolate">Chocolate</option>
-
-                        <option value="Biscuits">Biscuits</option>
-
-                        <option value="Dairy">Dairy</option>
-
-                        <option value="Frozen">Frozen</option>
-
-                        <option value="Ice Cream">Ice Cream</option>
-
-                        <option value="Grains">Grains</option>
-
-                        <option value="Rice">Rice</option>
-
-                        <option value="Oil">Oil</option>
-
-                        <option value="Cleaning">Cleaning</option>
-
-                        <option value="Personal Care">Personal Care</option>
-
-                        <option value="Medicine">Medicine</option>
-
-                        <option value="Electronics">Electronics</option>
-
-                        <option value="Mobile Accessories">Mobile Accessories</option>
-
-                    </select>
-
-                </div>
-
-            </div>
-
-            <!-- RIGHT -->
-
-            <div class="space-y-5">
-
-                <!-- STOCK -->
-
-                <div
-                    class="bg-slate-900 border border-slate-800 rounded-[2rem] p-6">
-
-                    <h2
-                        class="text-white text-xl font-black mb-6">
-
-                        Stock Information
-
-                    </h2>
-
-                    <div class="grid grid-cols-3 gap-4">
-
-                        <div>
-
-                            <label
-                                class="text-xs uppercase text-slate-500 font-black block mb-2">
-
-                                Cartons
-
-                            </label>
-
-                            <input type="number"
-                                id="form-cartons"
-                                value="1"
-                                oninput="calculateTotalPieces()"
-                                class="w-full bg-slate-800 rounded-2xl p-4 text-center text-white text-xl font-black outline-none">
-
-                        </div>
-
-                        <div>
-
-                            <label
-                                class="text-xs uppercase text-slate-500 font-black block mb-2">
-
-                                Pcs/Ctn
-
-                            </label>
-
-                            <input type="number"
-                                id="form-pcs-per"
-                                value="12"
-                                oninput="calculateTotalPieces()"
-                                class="w-full bg-slate-800 rounded-2xl p-4 text-center text-white text-xl font-black outline-none">
-
-                        </div>
-
-                        <div>
-
-                            <label
-                                class="text-xs uppercase text-primary font-black block mb-2">
-
-                                Total
-
-                            </label>
-
-                            <input type="number"
-                                id="form-total-pcs"
-                                readonly
-                                class="w-full bg-primary/10 rounded-2xl p-4 text-center text-primary text-xl font-black outline-none">
-
-                        </div>
-
+                <div class="space-y-2 text-sm mb-5">
+
+                    <div class="flex justify-between">
+                        <span>Barcode</span>
+                        <span>${p.sku}</span>
+                    </div>
+
+                    <div class="flex justify-between">
+                        <span>Expiry</span>
+                        <span class="text-yellow-400">
+                            ${p.expiryDate}
+                        </span>
                     </div>
 
                 </div>
 
-                <!-- PRICE -->
+                <div class="grid grid-cols-2 gap-3">
 
-                <div
-                    class="bg-slate-900 border border-slate-800 rounded-[2rem] p-6">
+                    <button onclick="editProduct('${p.id}')"
+                        class="bg-primary text-black py-4 rounded-2xl font-black">
 
-                    <h2
-                        class="text-white text-xl font-black mb-6">
+                        Edit
 
-                        Price Information
+                    </button>
 
-                    </h2>
+                    <button onclick="deleteProduct('${p.id}')"
+                        class="bg-red-500/10 text-red-400 py-4 rounded-2xl font-black">
 
-                    <div class="grid grid-cols-2 gap-4">
+                        Delete
 
-                        <div>
-
-                            <label
-                                class="text-xs uppercase text-slate-500 font-black block mb-2">
-
-                                Carton Price
-
-                            </label>
-
-                            <input type="number"
-                                step="0.01"
-                                id="form-carton-price"
-                                oninput="calculatePrices('carton')"
-                                class="w-full bg-slate-800 rounded-2xl p-5 text-white text-xl font-black outline-none">
-
-                        </div>
-
-                        <div>
-
-                            <label
-                                class="text-xs uppercase text-slate-500 font-black block mb-2">
-
-                                Piece Price
-
-                            </label>
-
-                            <input type="number"
-                                step="0.01"
-                                id="form-piece-price"
-                                oninput="calculatePrices('piece')"
-                                class="w-full bg-slate-800 rounded-2xl p-5 text-primary text-xl font-black outline-none">
-
-                        </div>
-
-                    </div>
+                    </button>
 
                 </div>
-
-                <!-- EXPIRY -->
-
-                <div
-                    class="bg-slate-900 border border-slate-800 rounded-[2rem] p-6">
-
-                    <label
-                        class="text-xs uppercase text-slate-500 font-black block mb-4">
-
-                        Expiry Date
-
-                    </label>
-
-                    <input type="date"
-                        id="form-expiry"
-                        required
-                        class="w-full bg-slate-800 rounded-2xl p-5 text-white text-xl font-black outline-none">
-
-                </div>
-
-                <!-- SAVE -->
-
-                <input type="hidden"
-                    id="form-id">
-
-                <button type="submit"
-                    id="save-btn"
-                    class="w-full bg-primary text-black py-6 rounded-[2rem] text-lg font-black uppercase tracking-widest shadow-2xl shadow-green-900/40 active:scale-95 transition-all">
-
-                    Save Product
-
-                </button>
-
-            </div>
-
-        </form>
-
-    </div>
-
-</div>
-
-<!-- ========================= -->
-<!-- SCAN RESULT MODAL -->
-<!-- ========================= -->
-
-<div id="scan-result-modal"
-    class="fixed inset-0 bg-black/90 backdrop-blur-md z-[99999] hidden items-center justify-center p-4">
-
-    <div
-        class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-[3rem] overflow-hidden shadow-2xl">
-
-        <!-- IMAGE -->
-
-        <div class="relative h-72 overflow-hidden">
-
-            <img id="scan-product-image"
-                class="w-full h-full object-cover">
-
-            <div
-                class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
-
-            <div
-                class="absolute bottom-5 left-5 right-5">
-
-                <p id="scan-product-category"
-                    class="text-primary uppercase text-xs tracking-widest font-black mb-2">
-
-                    Category
-
-                </p>
-
-                <h1 id="scan-product-name"
-                    class="text-4xl font-black text-white leading-tight">
-
-                    Product Name
-
-                </h1>
 
             </div>
 
         </div>
 
-        <!-- DETAILS -->
+        `;
 
-        <div class="p-6 space-y-5">
+    }).join("");
 
-            <div
-                class="grid grid-cols-2 gap-4">
+};
 
-                <div
-                    class="bg-slate-800 rounded-2xl p-4">
+// =======================
+// EDIT
+// =======================
 
-                    <p
-                        class="text-slate-500 text-xs uppercase font-black mb-2">
+window.editProduct = (id) => {
 
-                        Stock
+    const p =
+        localProducts.find(x => x.id === id);
 
-                    </p>
+    if (!p) return;
 
-                    <h2 id="scan-product-stock"
-                        class="text-white text-2xl font-black">
+    openAddProductForm();
 
-                        0 pcs
+    document.getElementById("form-id").value = p.id;
 
-                    </h2>
+    document.getElementById("form-name").value = p.name;
 
-                </div>
+    document.getElementById("form-sku").value = p.sku;
 
-                <div
-                    class="bg-slate-800 rounded-2xl p-4">
+    document.getElementById("form-category").value =
+        p.category;
 
-                    <p
-                        class="text-slate-500 text-xs uppercase font-black mb-2">
+    document.getElementById("form-cartons").value =
+        p.cartons;
 
-                        Expiry
+    document.getElementById("form-pcs-per").value =
+        p.pcsPerCarton;
 
-                    </p>
+    document.getElementById("form-total-pcs").value =
+        p.totalPieces;
 
-                    <h2 id="scan-product-expiry"
-                        class="text-yellow-400 text-lg font-black">
+    document.getElementById("form-carton-price").value =
+        p.cartonPrice;
 
-                        00-00-0000
+    document.getElementById("form-piece-price").value =
+        p.piecePrice;
 
-                    </h2>
+    document.getElementById("form-expiry").value =
+        p.expiryDate;
 
-                </div>
+    const img =
+        document.getElementById("form-img-output");
 
-            </div>
+    img.src = p.image;
 
-            <!-- MORE -->
+    img.classList.remove("hidden");
 
-            <div
-                class="bg-slate-800 rounded-[2rem] p-5 space-y-4">
+};
 
-                <div class="flex justify-between">
+// =======================
+// DELETE
+// =======================
 
-                    <span class="text-slate-400">
-                        Barcode
-                    </span>
+window.deleteProduct = async (id) => {
 
-                    <span id="scan-product-sku"
-                        class="font-black text-white">
+    const ok =
+        confirm("Delete product permanently?");
 
-                    </span>
+    if (!ok) return;
 
-                </div>
+    await firestore
+        .collection("stockify_products")
+        .doc(id)
+        .delete();
 
-                <div class="flex justify-between">
+    syncData();
 
-                    <span class="text-slate-400">
-                        Carton Price
-                    </span>
+};
 
-                    <span id="scan-product-carton"
-                        class="font-black text-primary">
+// =======================
+// DASHBOARD
+// =======================
 
-                    </span>
+window.renderDashboard = () => {
 
-                </div>
+    const today = new Date();
 
-                <div class="flex justify-between">
+    let expired = 0;
 
-                    <span class="text-slate-400">
-                        Piece Price
-                    </span>
+    let expiring = 0;
 
-                    <span id="scan-product-piece"
-                        class="font-black text-primary">
+    const cat = {};
 
-                    </span>
+    localProducts.forEach(p => {
 
-                </div>
+        const exp =
+            new Date(p.expiryDate);
 
-            </div>
+        const diff =
+            (exp - today) /
+            (1000 * 60 * 60 * 24);
 
-            <!-- BUTTONS -->
+        if (exp < today) expired++;
 
-            <div class="grid grid-cols-2 gap-4">
+        if (diff <= 7 && diff >= 0) expiring++;
 
-                <button onclick="closeScanModal()"
-                    class="bg-slate-800 text-white py-5 rounded-2xl font-black uppercase">
+        cat[p.category] =
+            (cat[p.category] || 0) + 1;
 
-                    Close
+    });
 
-                </button>
+    document.getElementById("dash-total").innerText =
+        localProducts.length;
 
-                <button onclick="editProduct(document.getElementById('form-id').value)"
-                    class="bg-primary text-black py-5 rounded-2xl font-black uppercase">
+    document.getElementById("dash-expired").innerText =
+        expired;
 
-                    Edit
+    document.getElementById("dash-expiring").innerText =
+        expiring;
 
-                </button>
+    document.getElementById("dash-category").innerText =
+        Object.keys(cat).length;
 
-            </div>
+};
 
-        </div>
+// =======================
+// SCANNER
+// =======================
 
-    </div>
+window.startScanner = async () => {
 
-</div>
+    if (scanner) return;
+
+    scanner =
+        new Html5Qrcode("scanner-container");
+
+    try {
+
+        await scanner.start(
+
+            {
+                facingMode: "environment"
+            },
+
+            {
+                fps: 10,
+                qrbox: 250
+            },
+
+            (decoded) => {
+
+                document
+                    .getElementById("scan-sound")
+                    .play();
+
+                const product =
+                    localProducts.find(
+                        p => p.sku === decoded
+                    );
+
+                // FOUND
+                if (product) {
+
+                    showScanResult(product);
+
+                }
+
+                // NOT FOUND
+                else {
+
+                    stopScanner();
+
+                    const add =
+                        confirm(
+                            "Product Not Found\n\nAdd New Product?"
+                        );
+
+                    if (add) {
+
+                        switchPage("products");
+
+                        openAddProductForm(decoded);
+
+                    }
+
+                }
+
+            }
+
+        );
+
+    } catch (err) {
+
+        console.log(err);
+
+    }
+
+};
+
+window.stopScanner = async () => {
+
+    if (!scanner) return;
+
+    await scanner.stop();
+
+    scanner = null;
+
+};
+
+// =======================
+// SCAN RESULT
+// =======================
+
+window.showScanResult = (p) => {
+
+    stopScanner();
+
+    document
+        .getElementById("scan-result-modal")
+        .classList.remove("hidden");
+
+    document
+        .getElementById("scan-result-modal")
+        .classList.add("flex");
+
+    document.getElementById("scan-product-image").src =
+        p.image;
+
+    document.getElementById("scan-product-name").innerText =
+        p.name;
+
+    document.getElementById("scan-product-category").innerText =
+        p.category;
+
+    document.getElementById("scan-product-stock").innerText =
+        p.totalPieces + " pcs";
+
+    document.getElementById("scan-product-expiry").innerText =
+        p.expiryDate;
+
+    document.getElementById("scan-product-sku").innerText =
+        p.sku;
+
+    document.getElementById("scan-product-carton").innerText =
+        "SAR " + p.cartonPrice;
+
+    document.getElementById("scan-product-piece").innerText =
+        "SAR " + p.piecePrice;
+
+};
+
+window.closeScanModal = () => {
+
+    document
+        .getElementById("scan-result-modal")
+        .classList.add("hidden");
+
+    startScanner();
+
+};
+
+// =======================
+// INIT
+// =======================
+
+document.addEventListener("DOMContentLoaded", async () => {
+
+    await initDB();
+
+    await syncData();
+
+    lucide.createIcons();
+
+});
