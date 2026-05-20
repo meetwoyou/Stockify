@@ -1,11 +1,10 @@
 /**
- * STOCKIFY PRO ULTRA
- * FULL UPGRADED ENGINE
+ * STOCKIFY ULTRA FINAL
  * Developer: Sabbir Hosen Akash
  */
 
 // =======================
-// FIREBASE CONFIG
+// FIREBASE
 // =======================
 
 const firebaseConfig = {
@@ -31,7 +30,7 @@ const CLOUDINARY_URL =
 const CLOUDINARY_PRESET = "Meetwoyou";
 
 // =======================
-// GLOBALS
+// GLOBAL
 // =======================
 
 let localProducts = [];
@@ -40,11 +39,11 @@ let localDB;
 
 let currentFilter = "all";
 
-let scannerInstance = null;
+let scanner = null;
 
-let stockChart = null;
+let chart1 = null;
 
-let expiryChart = null;
+let chart2 = null;
 
 // =======================
 // INDEXED DB
@@ -54,7 +53,7 @@ async function initDB() {
 
     return new Promise((resolve, reject) => {
 
-        const request = indexedDB.open("StockifyUltraDB", 1);
+        const request = indexedDB.open("StockifyUltra", 1);
 
         request.onupgradeneeded = (e) => {
 
@@ -78,66 +77,32 @@ async function initDB() {
 
         };
 
-        request.onerror = (e) => reject(e);
+        request.onerror = reject;
 
     });
 
 }
 
 // =======================
-// LOAD PRODUCTS
+// SYNC
 // =======================
 
 async function syncData() {
 
     try {
 
-        // LOCAL LOAD
-        const tx = localDB.transaction("products", "readonly");
+        const snapshot = await firestore
+            .collection("stockify_products")
+            .get();
 
-        const store = tx.objectStore("products");
+        localProducts = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
 
-        const request = store.getAll();
+        renderProducts();
 
-        request.onsuccess = async () => {
-
-            localProducts = request.result || [];
-
-            renderProducts();
-
-            renderDashboard();
-
-            // CLOUD LOAD
-            try {
-
-                const snapshot = await firestore
-                    .collection("stockify_products")
-                    .get();
-
-                const cloudData = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
-
-                localProducts = cloudData;
-
-                const updateTx = localDB.transaction("products", "readwrite");
-
-                const updateStore = updateTx.objectStore("products");
-
-                cloudData.forEach(p => updateStore.put(p));
-
-                renderProducts();
-
-                renderDashboard();
-
-            } catch (err) {
-
-                console.log("Offline Mode");
-
-            }
-
-        };
+        renderDashboard();
 
     } catch (err) {
 
@@ -148,7 +113,7 @@ async function syncData() {
 }
 
 // =======================
-// SWITCH PAGE
+// PAGE
 // =======================
 
 window.switchPage = (page) => {
@@ -165,13 +130,9 @@ window.switchPage = (page) => {
 
             btn.classList.remove("text-primary");
 
-            btn.classList.add("text-slate-500");
-
             if (btn.dataset.page === page) {
 
                 btn.classList.add("text-primary");
-
-                btn.classList.remove("text-slate-500");
 
             }
 
@@ -197,13 +158,6 @@ window.toggleTheme = () => {
 
     document.documentElement.classList.toggle("dark");
 
-    localStorage.setItem(
-        "theme",
-        document.documentElement.classList.contains("dark")
-        ? "dark"
-        : "light"
-    );
-
 };
 
 // =======================
@@ -224,16 +178,18 @@ window.setFilter = (filter) => {
 };
 
 // =======================
-// ADD PRODUCT FORM
+// FORM OPEN
 // =======================
 
 window.openAddProductForm = (barcode = "") => {
 
-    const form = document.getElementById("products-form-view");
+    document
+        .getElementById("products-form-view")
+        .classList.remove("hidden");
 
-    if (!form) return;
+    document.getElementById("product-form").reset();
 
-    form.classList.remove("hidden");
+    document.getElementById("form-id").value = "";
 
     document.getElementById("form-sku").value = barcode;
 
@@ -248,7 +204,7 @@ window.closeProductForm = () => {
 };
 
 // =======================
-// IMAGE PREVIEW
+// IMAGE
 // =======================
 
 window.handleFormImage = (input) => {
@@ -259,15 +215,12 @@ window.handleFormImage = (input) => {
 
     reader.onload = (e) => {
 
-        const img = document.getElementById("form-img-output");
+        const img =
+            document.getElementById("form-img-output");
 
         img.src = e.target.result;
 
         img.classList.remove("hidden");
-
-        document
-            .getElementById("image-placeholder")
-            .classList.add("hidden");
 
     };
 
@@ -276,7 +229,7 @@ window.handleFormImage = (input) => {
 };
 
 // =======================
-// CALCULATE
+// CALCULATION
 // =======================
 
 window.calculateTotalPieces = () => {
@@ -325,38 +278,30 @@ window.saveProduct = async (e) => {
 
     e.preventDefault();
 
-    const saveBtn = document.getElementById("save-btn");
-
-    saveBtn.innerText = "Syncing...";
-
-    saveBtn.disabled = true;
-
     try {
 
-        let imageUrl =
-            document.getElementById("form-img-output").src;
+        let imageUrl = "";
 
-        const fileInput = document.querySelector(
-            'input[type="file"]'
-        );
+        const file =
+            document.querySelector('input[type="file"]').files[0];
 
-        // CLOUDINARY
-        if (fileInput.files[0]) {
+        // upload image
+        if (file) {
 
-            const data = new FormData();
+            const formData = new FormData();
 
-            data.append("file", fileInput.files[0]);
+            formData.append("file", file);
 
-            data.append("upload_preset", CLOUDINARY_PRESET);
+            formData.append("upload_preset", CLOUDINARY_PRESET);
 
-            const upload = await fetch(CLOUDINARY_URL, {
+            const response = await fetch(CLOUDINARY_URL, {
                 method: "POST",
-                body: data
+                body: formData
             });
 
-            const result = await upload.json();
+            const data = await response.json();
 
-            imageUrl = result.secure_url;
+            imageUrl = data.secure_url;
 
         }
 
@@ -364,17 +309,24 @@ window.saveProduct = async (e) => {
             document.getElementById("form-id").value ||
             Date.now().toString();
 
+        const old =
+            localProducts.find(p => p.id === id);
+
         const payload = {
 
             id,
 
-            name: document.getElementById("form-name").value,
+            name:
+                document.getElementById("form-name").value,
 
-            sku: document.getElementById("form-sku").value,
+            sku:
+                document.getElementById("form-sku").value,
 
-            category: document.getElementById("form-category").value,
+            category:
+                document.getElementById("form-category").value,
 
-            cartons: document.getElementById("form-cartons").value,
+            cartons:
+                document.getElementById("form-cartons").value,
 
             pcsPerCarton:
                 document.getElementById("form-pcs-per").value,
@@ -391,18 +343,11 @@ window.saveProduct = async (e) => {
             expiryDate:
                 document.getElementById("form-expiry").value,
 
-            image: imageUrl,
-
-            updatedAt: Date.now()
+            image:
+                imageUrl || old?.image || ""
 
         };
 
-        // LOCAL
-        const tx = localDB.transaction("products", "readwrite");
-
-        tx.objectStore("products").put(payload);
-
-        // FIREBASE
         await firestore
             .collection("stockify_products")
             .doc(id)
@@ -412,15 +357,13 @@ window.saveProduct = async (e) => {
 
         syncData();
 
+        alert("Product Saved");
+
     } catch (err) {
 
         alert(err.message);
 
     }
-
-    saveBtn.innerText = "Save Product";
-
-    saveBtn.disabled = false;
 
 };
 
@@ -430,7 +373,8 @@ window.saveProduct = async (e) => {
 
 window.renderProducts = () => {
 
-    const grid = document.getElementById("product-grid");
+    const grid =
+        document.getElementById("product-grid");
 
     if (!grid) return;
 
@@ -445,8 +389,7 @@ window.renderProducts = () => {
 
         return (
             p.name.toLowerCase().includes(search) ||
-            p.sku.includes(search) ||
-            p.category.toLowerCase().includes(search)
+            p.sku.includes(search)
         );
 
     });
@@ -463,10 +406,9 @@ window.renderProducts = () => {
 
         products = products.filter(p => {
 
-            const exp = new Date(p.expiryDate);
-
             const diff =
-                (exp - today) / (1000 * 60 * 60 * 24);
+                (new Date(p.expiryDate) - today) /
+                (1000 * 60 * 60 * 24);
 
             return diff <= 7 && diff >= 0;
 
@@ -486,91 +428,51 @@ window.renderProducts = () => {
 
     }
 
-    if (products.length === 0) {
-
-        grid.innerHTML = `
-        <div class="col-span-full text-center py-24">
-            <i data-lucide="package-search" class="w-16 h-16 mx-auto text-slate-700 mb-4"></i>
-            <h2 class="text-2xl font-black text-slate-400">
-                No Product Found
-            </h2>
-        </div>
-        `;
-
-        lucide.createIcons();
-
-        return;
-
-    }
-
     grid.innerHTML = products.map(p => {
 
-        const expired =
-            new Date(p.expiryDate) < today;
-
         return `
-        
-        <div class="bg-slate-900 border ${expired ? 'border-red-500/30' : 'border-slate-800'} rounded-[2rem] overflow-hidden shadow-2xl card-hover">
 
-            <div class="relative h-60 overflow-hidden">
+        <div class="bg-slate-900 rounded-[2rem] overflow-hidden border border-slate-800">
+
+            <div class="h-60 overflow-hidden">
 
                 <img src="${p.image}"
                     class="w-full h-full object-cover">
-
-                ${expired ? `
-                    <div class="absolute top-4 right-4 bg-red-500 text-white px-3 py-1 rounded-full text-[10px] uppercase font-black">
-                        Expired
-                    </div>
-                ` : ''}
 
             </div>
 
             <div class="p-5">
 
-                <div class="flex justify-between gap-3 mb-4">
+                <div class="flex justify-between mb-4">
 
                     <div>
 
-                        <h2 class="text-2xl font-black line-clamp-1">
+                        <h2 class="text-2xl font-black">
                             ${p.name}
                         </h2>
 
-                        <p class="text-xs uppercase tracking-widest text-slate-500 font-black mt-2">
+                        <p class="text-xs text-slate-500 mt-1 uppercase">
                             ${p.category}
                         </p>
 
                     </div>
 
-                    <div class="bg-primary/10 text-primary px-3 py-2 rounded-2xl text-xs font-black h-fit">
+                    <div class="text-primary font-black">
                         ${p.totalPieces} pcs
                     </div>
 
                 </div>
 
-                <div class="space-y-2 mb-5 text-sm">
+                <div class="space-y-2 text-sm mb-5">
 
                     <div class="flex justify-between">
-                        <span class="text-slate-400">Barcode</span>
-                        <span class="font-black">${p.sku}</span>
+                        <span>Barcode</span>
+                        <span>${p.sku}</span>
                     </div>
 
                     <div class="flex justify-between">
-                        <span class="text-slate-400">Carton Price</span>
-                        <span class="font-black text-primary">
-                            SAR ${p.cartonPrice}
-                        </span>
-                    </div>
-
-                    <div class="flex justify-between">
-                        <span class="text-slate-400">Piece Price</span>
-                        <span class="font-black text-primary">
-                            SAR ${p.piecePrice}
-                        </span>
-                    </div>
-
-                    <div class="flex justify-between">
-                        <span class="text-slate-400">Expiry</span>
-                        <span class="font-black text-yellow-400">
+                        <span>Expiry</span>
+                        <span class="text-yellow-400">
                             ${p.expiryDate}
                         </span>
                     </div>
@@ -580,14 +482,14 @@ window.renderProducts = () => {
                 <div class="grid grid-cols-2 gap-3">
 
                     <button onclick="editProduct('${p.id}')"
-                        class="bg-primary text-black py-4 rounded-2xl font-black uppercase text-xs active:scale-95 transition-all">
+                        class="bg-primary text-black py-4 rounded-2xl font-black">
 
                         Edit
 
                     </button>
 
                     <button onclick="deleteProduct('${p.id}')"
-                        class="bg-red-500/10 text-red-400 py-4 rounded-2xl font-black uppercase text-xs active:scale-95 transition-all">
+                        class="bg-red-500/10 text-red-400 py-4 rounded-2xl font-black">
 
                         Delete
 
@@ -603,17 +505,16 @@ window.renderProducts = () => {
 
     }).join("");
 
-    lucide.createIcons();
-
 };
 
 // =======================
-// EDIT PRODUCT
+// EDIT
 // =======================
 
 window.editProduct = (id) => {
 
-    const p = localProducts.find(x => x.id === id);
+    const p =
+        localProducts.find(x => x.id === id);
 
     if (!p) return;
 
@@ -646,11 +547,12 @@ window.editProduct = (id) => {
     document.getElementById("form-expiry").value =
         p.expiryDate;
 
-    document.getElementById("form-img-output").src =
-        p.image;
+    const img =
+        document.getElementById("form-img-output");
 
-    document.getElementById("form-img-output")
-        .classList.remove("hidden");
+    img.src = p.image;
+
+    img.classList.remove("hidden");
 
 };
 
@@ -660,17 +562,11 @@ window.editProduct = (id) => {
 
 window.deleteProduct = async (id) => {
 
-    const confirmDelete =
-        confirm("Delete this product permanently?");
+    const ok =
+        confirm("Delete product permanently?");
 
-    if (!confirmDelete) return;
+    if (!ok) return;
 
-    // LOCAL
-    const tx = localDB.transaction("products", "readwrite");
-
-    tx.objectStore("products").delete(id);
-
-    // FIREBASE
     await firestore
         .collection("stockify_products")
         .doc(id)
@@ -692,21 +588,23 @@ window.renderDashboard = () => {
 
     let expiring = 0;
 
-    const categoryMap = {};
+    const cat = {};
 
     localProducts.forEach(p => {
 
-        const exp = new Date(p.expiryDate);
+        const exp =
+            new Date(p.expiryDate);
 
         const diff =
-            (exp - today) / (1000 * 60 * 60 * 24);
+            (exp - today) /
+            (1000 * 60 * 60 * 24);
 
         if (exp < today) expired++;
 
         if (diff <= 7 && diff >= 0) expiring++;
 
-        categoryMap[p.category] =
-            (categoryMap[p.category] || 0) + 1;
+        cat[p.category] =
+            (cat[p.category] || 0) + 1;
 
     });
 
@@ -720,124 +618,7 @@ window.renderDashboard = () => {
         expiring;
 
     document.getElementById("dash-category").innerText =
-        Object.keys(categoryMap).length;
-
-    // CATEGORY CHART
-    const ctx =
-        document.getElementById("stockChart");
-
-    if (ctx) {
-
-        if (stockChart) stockChart.destroy();
-
-        stockChart = new Chart(ctx, {
-
-            type: "doughnut",
-
-            data: {
-
-                labels: Object.keys(categoryMap),
-
-                datasets: [{
-                    data: Object.values(categoryMap),
-                    borderWidth: 0
-                }]
-
-            },
-
-            options: {
-
-                responsive: true,
-
-                maintainAspectRatio: false,
-
-                plugins: {
-
-                    legend: {
-                        labels: {
-                            color: "#fff"
-                        }
-                    }
-
-                }
-
-            }
-
-        });
-
-    }
-
-    // EXPIRY CHART
-    const expCtx =
-        document.getElementById("expiryChart");
-
-    if (expCtx) {
-
-        if (expiryChart) expiryChart.destroy();
-
-        expiryChart = new Chart(expCtx, {
-
-            type: "bar",
-
-            data: {
-
-                labels: [
-                    "Expired",
-                    "7 Days Left",
-                    "Safe"
-                ],
-
-                datasets: [{
-                    data: [
-                        expired,
-                        expiring,
-                        localProducts.length -
-                        expired -
-                        expiring
-                    ]
-                }]
-
-            },
-
-            options: {
-
-                responsive: true,
-
-                maintainAspectRatio: false,
-
-                plugins: {
-
-                    legend: {
-                        display: false
-                    }
-
-                },
-
-                scales: {
-
-                    y: {
-
-                        ticks: {
-                            color: "#fff"
-                        }
-
-                    },
-
-                    x: {
-
-                        ticks: {
-                            color: "#fff"
-                        }
-
-                    }
-
-                }
-
-            }
-
-        });
-
-    }
+        Object.keys(cat).length;
 
 };
 
@@ -847,14 +628,14 @@ window.renderDashboard = () => {
 
 window.startScanner = async () => {
 
-    if (scannerInstance) return;
+    if (scanner) return;
 
-    scannerInstance =
+    scanner =
         new Html5Qrcode("scanner-container");
 
     try {
 
-        await scannerInstance.start(
+        await scanner.start(
 
             {
                 facingMode: "environment"
@@ -865,7 +646,7 @@ window.startScanner = async () => {
                 qrbox: 250
             },
 
-            (decodedText) => {
+            (decoded) => {
 
                 document
                     .getElementById("scan-sound")
@@ -873,14 +654,18 @@ window.startScanner = async () => {
 
                 const product =
                     localProducts.find(
-                        p => p.sku === decodedText
+                        p => p.sku === decoded
                     );
 
+                // FOUND
                 if (product) {
 
-                    showScanProduct(product);
+                    showScanResult(product);
 
-                } else {
+                }
+
+                // NOT FOUND
+                else {
 
                     stopScanner();
 
@@ -893,7 +678,7 @@ window.startScanner = async () => {
 
                         switchPage("products");
 
-                        openAddProductForm(decodedText);
+                        openAddProductForm(decoded);
 
                     }
 
@@ -911,33 +696,21 @@ window.startScanner = async () => {
 
 };
 
-// =======================
-// STOP SCANNER
-// =======================
-
 window.stopScanner = async () => {
 
-    if (!scannerInstance) return;
+    if (!scanner) return;
 
-    try {
+    await scanner.stop();
 
-        await scannerInstance.stop();
-
-        scannerInstance = null;
-
-    } catch (err) {
-
-        console.log(err);
-
-    }
+    scanner = null;
 
 };
 
 // =======================
-// SHOW SCAN PRODUCT
+// SCAN RESULT
 // =======================
 
-window.showScanProduct = (p) => {
+window.showScanResult = (p) => {
 
     stopScanner();
 
@@ -975,10 +748,6 @@ window.showScanProduct = (p) => {
 
 };
 
-// =======================
-// CLOSE SCAN MODAL
-// =======================
-
 window.closeScanModal = () => {
 
     document
@@ -994,12 +763,6 @@ window.closeScanModal = () => {
 // =======================
 
 document.addEventListener("DOMContentLoaded", async () => {
-
-    if (localStorage.getItem("theme") === "light") {
-
-        document.documentElement.classList.remove("dark");
-
-    }
 
     await initDB();
 
