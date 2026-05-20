@@ -1,13 +1,14 @@
 <!DOCTYPE html>
-<html lang="bn" class="light">
+<html lang="bn" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, visual-viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Stockify Pro - Sabbir Hosen Akash</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
 
@@ -15,193 +16,209 @@
         tailwind.config = {
             darkMode: 'class',
             theme: {
-                extend: { colors: { primary: '#16a34a', darkBg: '#0f172a' } }
+                extend: { 
+                    colors: { primary: '#16a34a', darkBg: '#0f172a', surface: '#1e293b' } 
+                }
             }
         }
     </script>
     <style>
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        body { -webkit-tap-highlight-color: transparent; font-family: 'Inter', sans-serif; }
-        .page-view { animation: fadeIn 0.3s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        body { -webkit-tap-highlight-color: transparent; }
+        .filter-chip.active { background-color: #16a34a; color: white; border-color: #16a34a; }
+        .page-view { animation: slideUp 0.3s ease-out; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-100 min-h-screen pb-20 md:pb-0 md:pl-64 transition-colors">
+<body class="bg-darkBg text-slate-100 min-h-screen pb-24">
 
-    <aside class="hidden md:flex fixed left-0 top-0 h-full w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 p-6 flex-col justify-between z-40">
-        <div class="space-y-8">
-            <div class="flex flex-col">
-                <span class="text-2xl font-black tracking-tighter text-green-600">STOCKIFY</span>
-                <span class="text-[10px] font-bold text-slate-400 tracking-[0.2em]">BY SABBIR HOSEN</span>
+    <header class="p-6 pb-2">
+        <div class="flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-black tracking-tight">Stock Management</h1>
+                <p class="text-slate-400 text-xs font-medium">পণ্য ট্র্যাকিং ও ফিল্টারিং সিস্টেম।</p>
             </div>
-            <nav class="space-y-2">
-                <button onclick="switchPage('dashboard')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold bg-green-600 text-white shadow-lg shadow-green-600/20" data-page="dashboard">
-                    <i data-lucide="layout-dashboard"></i> Dashboard
-                </button>
-                <button onclick="switchPage('products')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium text-slate-500 dark:text-slate-400" data-page="products">
-                    <i data-lucide="box"></i> Inventory
-                </button>
-                <button onclick="switchPage('scanner')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium text-slate-500 dark:text-slate-400" data-page="scanner">
-                    <i data-lucide="scan-line"></i> Smart Scan
-                </button>
-            </nav>
+            <button onclick="openAddProductForm()" class="bg-primary hover:bg-green-700 text-white px-4 py-2.5 rounded-2xl flex items-center gap-2 text-sm font-bold transition-all active:scale-95 shadow-lg shadow-green-900/20">
+                <i data-lucide="plus" class="w-4 h-4"></i> Add Product
+            </button>
         </div>
-    </aside>
+    </header>
 
-    <main class="p-4 md:p-8 max-w-5xl mx-auto w-full">
-        
-        <section id="page-dashboard" class="page-view space-y-6">
-            <div class="flex justify-between items-center">
-                <h1 class="text-3xl font-black">Overview</h1>
-                <div class="flex gap-2">
-                    <div class="w-10 h-10 rounded-full border-2 border-green-500 p-0.5">
-                        <img src="sabbir.jpg" class="w-full h-full rounded-full object-cover" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=Sabbir'">
-                    </div>
+    <section class="px-6 py-4 space-y-4">
+        <div class="relative group">
+            <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500"></i>
+            <input id="search-input" oninput="renderProducts()" type="text" placeholder="Search by title or barcode..." 
+                class="w-full bg-surface border border-slate-700 rounded-2xl py-4 pl-12 pr-4 text-sm focus:ring-2 ring-primary outline-none transition-all">
+        </div>
+
+        <div class="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+            <button onclick="setFilter('expired')" class="filter-chip flex items-center gap-1.5 px-4 py-2 rounded-xl bg-surface border border-slate-700 text-xs font-bold text-red-500 whitespace-nowrap">
+                ⚠️ Expired
+            </button>
+            <button onclick="setFilter('all')" class="filter-chip active px-4 py-2 rounded-xl bg-surface border border-slate-700 text-xs font-bold whitespace-nowrap">All</button>
+            <button onclick="setFilter('Grains')" class="filter-chip px-4 py-2 rounded-xl bg-surface border border-slate-700 text-xs font-bold text-slate-400 whitespace-nowrap">Grains</button>
+            <button onclick="setFilter('Dairy')" class="filter-chip px-4 py-2 rounded-xl bg-surface border border-slate-700 text-xs font-bold text-slate-400 whitespace-nowrap">Dairy</button>
+            <button onclick="setFilter('Beverages')" class="filter-chip px-4 py-2 rounded-xl bg-surface border border-slate-700 text-xs font-bold text-slate-400 whitespace-nowrap">Beverages</button>
+            <button onclick="setFilter('Snacks')" class="filter-chip px-4 py-2 rounded-xl bg-surface border border-slate-700 text-xs font-bold text-slate-400 whitespace-nowrap">Snacks</button>
+            <button onclick="setFilter('Packaged')" class="filter-chip px-4 py-2 rounded-xl bg-surface border border-slate-700 text-xs font-bold text-slate-400 whitespace-nowrap">Packaged</button>
+            <button onclick="setFilter('Fresh Produce')" class="filter-chip px-4 py-2 rounded-xl bg-surface border border-slate-700 text-xs font-bold text-slate-400 whitespace-nowrap">Fresh Produce</button>
+        </div>
+    </section>
+
+    <main class="px-6">
+        <div id="page-dashboard" class="page-view hidden">
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-surface p-6 rounded-[2rem] border border-slate-800">
+                    <p class="text-[10px] font-black text-slate-500 uppercase">Total Items</p>
+                    <h2 id="dash-total" class="text-3xl font-black mt-1">0</h2>
+                </div>
+                <div onclick="setFilter('expired')" class="bg-red-500/10 p-6 rounded-[2rem] border border-red-500/20 cursor-pointer">
+                    <p class="text-[10px] font-black text-red-400 uppercase">Expired</p>
+                    <h2 id="dash-expired" class="text-3xl font-black mt-1 text-red-500">0</h2>
                 </div>
             </div>
-            <div class="grid gap-4 grid-cols-2 lg:grid-cols-3">
-                <div class="bg-white dark:bg-slate-800 p-6 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-slate-700">
-                    <p class="text-[10px] font-black text-slate-400 uppercase">Items</p>
-                    <h3 id="dash-total" class="text-3xl font-black mt-1">0</h3>
+        </div>
+
+        <div id="page-products" class="page-view space-y-4">
+            <div id="product-grid" class="grid grid-cols-1 gap-4 pb-10">
                 </div>
-                <div class="bg-white dark:bg-slate-800 p-6 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-slate-700">
-                    <p class="text-[10px] font-black text-slate-400 uppercase">Stock Pcs</p>
-                    <h3 id="dash-pieces" class="text-3xl font-black mt-1 text-primary">0</h3>
-                </div>
-                <div onclick="switchPage('products'); renderProducts('expired')" class="bg-red-500/5 dark:bg-red-500/10 p-6 rounded-[2.5rem] shadow-sm border border-red-500/20 cursor-pointer active:scale-95 transition-all col-span-2 lg:col-span-1">
-                    <p class="text-[10px] font-black text-red-500 uppercase">Expired Alert</p>
-                    <h3 id="dash-expired" class="text-3xl font-black mt-1 text-red-600">0</h3>
-                </div>
-            </div>
-        </section>
+        </div>
 
-        <section id="page-products" class="page-view space-y-6 hidden">
-            <div id="products-list-view" class="space-y-6">
-                <div class="flex items-center justify-between">
-                    <h1 class="text-2xl font-black">Stockify List</h1>
-                    <button onclick="openAddProductForm()" class="bg-green-600 text-white p-4 rounded-2xl shadow-xl shadow-green-600/30 active:scale-90 transition-all">
-                        <i data-lucide="plus"></i>
-                    </button>
-                </div>
-                <div class="relative">
-                    <i data-lucide="search" class="absolute left-4 top-4 h-4 w-4 text-slate-400"></i>
-                    <input id="search-input" oninput="renderProducts()" type="text" placeholder="Search by name or barcode..." class="w-full bg-white dark:bg-slate-800 border-none rounded-2xl pl-12 pr-4 py-4 text-sm shadow-sm focus:ring-2 ring-green-500 outline-none">
-                </div>
-                <div id="product-grid" class="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-                    </div>
-            </div>
-
-            <div id="products-form-view" class="max-w-xl mx-auto hidden">
-                <div class="flex items-center gap-4 mb-8">
-                    <button onclick="closeProductForm()" class="p-3 bg-white dark:bg-slate-800 rounded-2xl shadow-sm"><i data-lucide="chevron-left"></i></button>
-                    <h2 class="text-xl font-black uppercase">Entry Form</h2>
-                </div>
-                <form id="product-form" onsubmit="saveProduct(event)" class="space-y-5">
-                    <input type="hidden" id="form-id">
-                    
-                    <div class="relative h-56 rounded-[3rem] overflow-hidden bg-slate-200 dark:bg-slate-800 border-4 border-white dark:border-slate-700 shadow-xl group">
-                        <img id="form-img-output" class="absolute inset-0 w-full h-full object-cover hidden">
-                        <div id="image-placeholder" class="flex flex-col items-center justify-center h-full">
-                            <i data-lucide="camera" class="w-10 h-10 text-slate-400 mb-2"></i>
-                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Capture or Upload</p>
-                        </div>
-                        <input type="file" accept="image/*" onchange="handleFormImage(this)" class="absolute inset-0 opacity-0 cursor-pointer">
-                    </div>
-
-                    <div class="grid gap-4">
-                        <input type="text" id="form-name" placeholder="Product Name" required class="w-full p-5 bg-white dark:bg-slate-800 rounded-2xl outline-none font-bold shadow-sm">
-                        
-                        <div class="grid grid-cols-2 gap-4">
-                            <input type="text" id="form-sku" placeholder="Barcode / SKU" required class="p-5 bg-white dark:bg-slate-800 rounded-2xl font-mono text-sm shadow-sm">
-                            <select id="form-category" class="p-5 bg-white dark:bg-slate-800 rounded-2xl font-bold text-sm shadow-sm outline-none">
-                                <option value="Beverages">Beverages</option>
-                                <option value="Bakery">Bakery</option>
-                                <option value="Dairy">Dairy</option>
-                                <option value="Frozen">Frozen</option>
-                                <option value="Toiletries">Toiletries</option>
-                                <option value="Snacks">Snacks</option>
-                            </select>
-                        </div>
-
-                        <div class="grid grid-cols-3 gap-2 bg-green-600/5 p-5 rounded-[2.5rem] border border-green-600/10">
-                            <div class="text-center">
-                                <label class="text-[8px] font-black text-slate-400 uppercase">Cartons</label>
-                                <input type="number" id="form-cartons" value="0" oninput="calculateTotalPieces()" class="bg-transparent w-full text-center font-black text-xl outline-none">
-                            </div>
-                            <div class="text-center">
-                                <label class="text-[8px] font-black text-slate-400 uppercase">Pcs/Ctn</label>
-                                <input type="number" id="form-pcs-per" value="1" oninput="calculateTotalPieces()" class="bg-transparent w-full text-center font-black text-xl outline-none">
-                            </div>
-                            <div class="text-center">
-                                <label class="text-[8px] font-black text-primary uppercase">Total</label>
-                                <input type="number" id="form-total-pcs" readonly class="bg-transparent w-full text-center font-black text-xl text-primary outline-none">
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-4">
-                            <input type="number" step="0.01" id="form-carton-price" placeholder="Ctn Price" oninput="calculatePrices('carton')" class="p-5 bg-white dark:bg-slate-800 rounded-2xl font-bold shadow-sm">
-                            <input type="number" step="0.01" id="form-piece-price" placeholder="Pcs Price" oninput="calculatePrices('piece')" class="p-5 bg-white dark:bg-slate-800 rounded-2xl font-bold shadow-sm">
-                        </div>
-
-                        <div class="space-y-1">
-                            <label class="text-[10px] font-black text-slate-400 uppercase ml-4">Expiration Date</label>
-                            <input type="date" id="form-expiry" required class="w-full p-5 bg-white dark:bg-slate-800 rounded-2xl font-bold shadow-sm">
-                        </div>
-                    </div>
-
-                    <button type="submit" id="save-btn" class="w-full bg-green-600 text-white py-6 rounded-[2.5rem] font-black uppercase tracking-widest shadow-xl shadow-green-600/30 active:scale-95 transition-all mt-4">
-                        Save & Cloud Backup
-                    </button>
-                </form>
-            </div>
-        </section>
-
-        <section id="page-scanner" class="page-view space-y-6 hidden">
-            <div class="max-w-md mx-auto">
-                <h1 class="text-2xl font-black mb-6">Smart Scanner</h1>
-                <div class="relative aspect-square rounded-[3.5rem] overflow-hidden border-[6px] border-green-500 shadow-2xl bg-black">
+        <div id="page-scanner" class="page-view hidden">
+            <div class="max-w-sm mx-auto space-y-6">
+                <div class="relative aspect-square rounded-[3rem] overflow-hidden border-4 border-primary bg-black shadow-2xl">
                     <div id="scanner-container" class="w-full h-full"></div>
-                    <div class="absolute inset-0 border-[50px] border-black/40 pointer-events-none"></div>
-                    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-40 border-2 border-green-500 rounded-3xl animate-pulse">
-                        <div class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full bg-green-500 text-white text-[8px] font-black px-3 py-1 rounded-t-lg uppercase">Scanning...</div>
-                    </div>
+                    <div class="absolute inset-0 border-[40px] border-black/40 pointer-events-none"></div>
+                    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-40 border border-primary/50 rounded-2xl animate-pulse"></div>
                 </div>
-                <button onclick="startScanner()" class="w-full mt-8 bg-white dark:bg-slate-800 p-5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-sm">Initialize Camera</button>
+                <p class="text-center text-slate-400 text-sm font-bold uppercase tracking-widest">Scanning Barcode...</p>
             </div>
-        </section>
-
-        <section id="page-settings" class="page-view space-y-6 hidden text-center">
-            <div class="bg-white dark:bg-slate-800 p-10 rounded-[3.5rem] shadow-sm border border-slate-100 dark:border-slate-700">
-                <div class="w-24 h-24 mx-auto mb-4 border-4 border-green-500 rounded-full p-1">
-                    <img src="sabbir.jpg" class="w-full h-full rounded-full object-cover" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=Sabbir'">
-                </div>
-                <h2 class="text-2xl font-black">Sabbir Hosen Akash</h2>
-                <p class="text-green-600 text-[10px] font-black uppercase tracking-widest mb-8">Lead System Architect</p>
-                
-                <div class="space-y-3">
-                    <div class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl">
-                        <span class="text-xs font-bold text-slate-500">Dark Mode</span>
-                        <button onclick="toggleTheme()" class="w-12 h-6 bg-slate-300 dark:bg-green-600 rounded-full relative transition-all">
-                            <div class="absolute top-1 left-1 dark:left-7 w-4 h-4 bg-white rounded-full transition-all"></div>
-                        </button>
-                    </div>
-                    <div class="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl flex justify-between items-center">
-                        <span class="text-xs font-bold text-slate-500">Cloud Status</span>
-                        <span class="text-[10px] font-black text-green-500 uppercase">Live & Secure</span>
-                    </div>
-                </div>
-            </div>
-        </section>
+        </div>
     </main>
 
-    <nav class="md:hidden fixed bottom-0 left-0 right-0 h-20 bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl border-t border-slate-100 dark:border-slate-700 flex items-center justify-around z-50 px-6">
-        <button onclick="switchPage('dashboard')" class="mobile-nav-btn text-green-600" data-page="dashboard"><i data-lucide="layout-dashboard"></i></button>
-        <button onclick="switchPage('products')" class="mobile-nav-btn text-slate-400" data-page="products"><i data-lucide="box"></i></button>
-        <button onclick="switchPage('scanner')" class="mobile-nav-btn text-slate-400" data-page="scanner"><i data-lucide="scan-line"></i></button>
-        <button onclick="switchPage('settings')" class="mobile-nav-btn text-slate-400" data-page="settings"><i data-lucide="user"></i></button>
+    <nav class="fixed bottom-0 left-0 right-0 bg-surface/80 backdrop-blur-xl border-t border-slate-800 h-20 flex items-center justify-around px-4 z-50">
+        <button onclick="switchPage('dashboard')" class="nav-btn flex flex-col items-center gap-1 text-slate-500" data-page="dashboard">
+            <i data-lucide="layout-grid"></i><span class="text-[10px] font-bold">Dashboard</span>
+        </button>
+        <button onclick="switchPage('products')" class="nav-btn flex flex-col items-center gap-1 text-primary" data-page="products">
+            <i data-lucide="package"></i><span class="text-[10px] font-bold">Products</span>
+        </button>
+        <button onclick="switchPage('scanner')" class="nav-btn flex flex-col items-center gap-1 text-slate-500" data-page="scanner">
+            <i data-lucide="scan-line"></i><span class="text-[10px] font-bold">Scanner</span>
+        </button>
+        <button onclick="switchPage('settings')" class="nav-btn flex flex-col items-center gap-1 text-slate-500" data-page="settings">
+            <i data-lucide="user-round"></i><span class="text-[10px] font-bold">Settings</span>
+        </button>
     </nav>
 
-    <div id="details-modal" class="fixed inset-0 bg-black/60 backdrop-blur-md hidden items-center justify-center z-[100] p-6"></div>
+    <div id="products-form-view" class="fixed inset-0 bg-darkBg z-[60] hidden overflow-y-auto p-6 pb-24">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-xl font-black uppercase">Product Entry</h2>
+            <button onclick="closeProductForm()" class="bg-surface p-2 rounded-full"><i data-lucide="x"></i></button>
+        </div>
+        
+        <form id="product-form" onsubmit="saveProduct(event)" class="space-y-4">
+            <input type="hidden" id="form-id">
+            
+            <div class="relative h-48 rounded-[2.5rem] overflow-hidden bg-surface border-2 border-dashed border-slate-700 group">
+                <img id="form-img-output" class="absolute inset-0 w-full h-full object-cover hidden">
+                <div id="image-placeholder" class="flex flex-col items-center justify-center h-full">
+                    <i data-lucide="camera" class="w-8 h-8 text-slate-500 mb-2"></i>
+                    <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Add Product Image</p>
+                </div>
+                <input type="file" accept="image/*" onchange="handleFormImage(this)" class="absolute inset-0 opacity-0 cursor-pointer">
+            </div>
+
+            <input type="text" id="form-name" placeholder="Product Name" required class="w-full bg-surface p-5 rounded-2xl outline-none font-bold">
+            
+            <div class="grid grid-cols-2 gap-4">
+                <input type="text" id="form-sku" placeholder="Barcode" required class="bg-surface p-5 rounded-2xl font-mono text-sm">
+                <select id="form-category" class="bg-surface p-5 rounded-2xl font-bold text-sm outline-none">
+                    <option value="Grains">Grains</option>
+                    <option value="Dairy" selected>Dairy</option>
+                    <option value="Beverages">Beverages</option>
+                    <option value="Snacks">Snacks</option>
+                    <option value="Packaged">Packaged</option>
+                    <option value="Fresh Produce">Fresh Produce</option>
+                </select>
+            </div>
+
+            <div class="bg-primary/5 p-5 rounded-[2rem] border border-primary/20 grid grid-cols-3 gap-2">
+                <div class="text-center">
+                    <label class="text-[8px] font-black text-slate-500 uppercase">Cartons</label>
+                    <input type="number" id="form-cartons" value="1" oninput="calculateTotalPieces()" class="bg-transparent w-full text-center font-black text-lg outline-none">
+                </div>
+                <div class="text-center border-x border-slate-800">
+                    <label class="text-[8px] font-black text-slate-500 uppercase">Pcs/Ctn</label>
+                    <input type="number" id="form-pcs-per" value="10" oninput="calculateTotalPieces()" class="bg-transparent w-full text-center font-black text-lg outline-none">
+                </div>
+                <div class="text-center">
+                    <label class="text-[8px] font-black text-primary uppercase">Total Pcs</label>
+                    <input type="number" id="form-total-pcs" readonly class="bg-transparent w-full text-center font-black text-lg text-primary outline-none">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-1">
+                    <label class="text-[10px] font-black text-slate-500 uppercase ml-2">Ctn Price</label>
+                    <input type="number" step="0.01" id="form-carton-price" oninput="calculatePrices('carton')" class="bg-surface w-full p-4 rounded-2xl font-bold outline-none">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[10px] font-black text-slate-500 uppercase ml-2">Pce Price</label>
+                    <input type="number" step="0.01" id="form-piece-price" oninput="calculatePrices('piece')" class="bg-surface w-full p-4 rounded-2xl font-bold outline-none">
+                </div>
+            </div>
+
+            <div class="space-y-1">
+                <label class="text-[10px] font-black text-slate-500 uppercase ml-2">Expiration Date</label>
+                <input type="date" id="form-expiry" required class="bg-surface w-full p-5 rounded-2xl font-bold outline-none">
+            </div>
+
+            <button type="submit" id="save-btn" class="w-full bg-primary text-white py-5 rounded-[2rem] font-black uppercase tracking-widest shadow-xl shadow-green-900/40 active:scale-95 transition-all">
+                Save & Sync
+            </button>
+        </form>
+    </div>
+
+    <div id="details-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] hidden items-end justify-center p-4">
+        <div class="bg-surface w-full max-w-md rounded-[3rem] p-8 space-y-6 animate-in slide-in-from-bottom duration-300 relative">
+            <button onclick="document.getElementById('details-modal').classList.add('hidden')" class="absolute top-6 right-6 bg-slate-800 p-2 rounded-full"><i data-lucide="x" class="w-4 h-4"></i></button>
+            
+            <div id="detail-img-container" class="h-48 rounded-[2rem] overflow-hidden bg-black shadow-inner">
+                <img id="detail-img" class="w-full h-full object-cover">
+            </div>
+
+            <div class="space-y-1">
+                <span id="detail-category" class="bg-primary/20 text-primary text-[10px] px-3 py-1 rounded-lg font-black uppercase">Dairy</span>
+                <h2 id="detail-name" class="text-2xl font-black">Product Name</h2>
+            </div>
+
+            <div class="space-y-3 pt-4 border-t border-slate-800">
+                <div class="flex items-center gap-4 text-sm">
+                    <i data-lucide="barcode" class="w-5 h-5 text-slate-500"></i>
+                    <span class="text-slate-400">Barcode/SKU:</span>
+                    <span id="detail-sku" class="font-mono font-bold ml-auto">00000000</span>
+                </div>
+                <div class="flex items-center gap-4 text-sm">
+                    <i data-lucide="layers" class="w-5 h-5 text-slate-500"></i>
+                    <span class="text-slate-400">Volume Stock:</span>
+                    <span id="detail-stock" class="font-bold ml-auto">0 Cartons × 0 (0 Pcs)</span>
+                </div>
+                <div class="flex items-center gap-4 text-sm">
+                    <i data-lucide="banknote" class="w-5 h-5 text-slate-500"></i>
+                    <span class="text-slate-400">Price Rate:</span>
+                    <span class="ml-auto font-bold text-primary">Ctn: SAR <span id="detail-ctn-price">0</span> | Pce: SAR <span id="detail-pce-price">0</span></span>
+                </div>
+                <div class="flex items-center gap-4 text-sm">
+                    <i data-lucide="calendar-range" class="w-5 h-5 text-slate-500"></i>
+                    <span class="text-slate-400">Expiration:</span>
+                    <span id="detail-expiry" class="font-bold ml-auto text-orange-400">2027-03-23</span>
+                </div>
+            </div>
+
+            <button onclick="document.getElementById('details-modal').classList.add('hidden')" class="w-full bg-slate-800 py-5 rounded-[2rem] font-black uppercase tracking-widest text-xs">Close Sheet</button>
+        </div>
+    </div>
 
     <script src="app.js"></script>
     <script>lucide.createIcons();</script>
