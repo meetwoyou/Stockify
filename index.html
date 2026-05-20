@@ -2,164 +2,168 @@
 <html lang="en" class="dark">
 
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Stockify Pro Ultra</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Stockify Pro Ultra</title>
 
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="https://unpkg.com/lucide@latest"></script>
+    <!-- TAILWIND -->
+    <script src="https://cdn.tailwindcss.com"></script>
 
-<script>
-tailwind.config = {
-  darkMode: "class",
-  theme: {
-    extend: {
-      colors: {
-        primary: "#16a34a"
-      }
-    }
-  }
-}
-</script>
+    <!-- ICONS -->
+    <script src="https://unpkg.com/lucide@latest"></script>
 
-<style>
-body{background:#020617;color:white;font-family:sans-serif}
-.glass{background:rgba(15,23,42,.75);backdrop-filter:blur(20px)}
-</style>
+    <!-- SCANNER -->
+    <script src="https://unpkg.com/html5-qrcode"></script>
 
+    <!-- CHART -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- FIREBASE -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#16a34a",
+                        darkBg: "#020617",
+                        surface: "#0f172a"
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        * {
+            -webkit-tap-highlight-color: transparent;
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: Inter, sans-serif;
+            background: #020617;
+        }
+
+        .glass {
+            background: rgba(15, 23, 42, .75);
+            backdrop-filter: blur(22px);
+        }
+
+        .page-view {
+            animation: fade .35s ease;
+        }
+
+        @keyframes fade {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+
+        .filter-chip.active {
+            background: #16a34a;
+            border-color: #16a34a;
+            color: white;
+        }
+    </style>
 </head>
 
-<body class="p-6">
+<body class="text-white min-h-screen pb-28">
 
-<!-- HEADER -->
-<div class="flex justify-between items-center mb-6">
-  <h1 class="text-3xl font-bold">Stockify</h1>
-  <button onclick="openAddProductForm()" class="bg-green-500 text-black px-4 py-2 rounded-xl font-bold">
-    + Add Product
-  </button>
-</div>
+<main class="max-w-[1800px] mx-auto p-4 md:p-8 desktop-layout">
 
-<!-- STATS -->
-<div class="grid grid-cols-3 gap-4 mb-6">
-  <div class="bg-slate-800 p-4 rounded-xl">
-    Total: <span id="total">0</span>
-  </div>
-  <div class="bg-slate-800 p-4 rounded-xl">
-    Products: <span id="count">0</span>
-  </div>
-  <div class="bg-slate-800 p-4 rounded-xl">
-    Low Stock: <span id="low">0</span>
-  </div>
-</div>
+    <!-- SIDEBAR -->
+    <aside class="hidden xl:block">
+        <div class="glass border border-slate-800 rounded-[2.5rem] p-8 sticky top-8 shadow-2xl">
 
-<!-- PRODUCT GRID -->
-<div id="grid" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+            <div class="flex items-center gap-4 mb-12">
+                <div class="w-16 h-16 rounded-3xl bg-primary flex items-center justify-center">
+                    <i data-lucide="package"></i>
+                </div>
+                <div>
+                    <h1 class="text-3xl font-black">Stockify</h1>
+                    <p class="text-xs uppercase tracking-[0.35em] text-slate-500 font-black mt-1">PRO ULTRA</p>
+                </div>
+            </div>
 
-<!-- ADD PRODUCT MODAL -->
-<div id="modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4">
+            <div class="space-y-3">
+                <button onclick="switchPage('dashboard')" class="nav-btn active">Dashboard</button>
+                <button onclick="switchPage('products')" class="nav-btn">Products</button>
+                <button onclick="switchPage('scanner')" class="nav-btn">AI Scanner</button>
+                <button onclick="switchPage('settings')" class="nav-btn">Settings</button>
+            </div>
 
-  <div class="bg-slate-900 p-6 rounded-2xl w-full max-w-md space-y-3">
+        </div>
+    </aside>
 
-    <h2 class="text-xl font-bold">Add Product</h2>
+    <!-- CONTENT -->
+    <section class="space-y-6">
 
-    <input id="name" placeholder="Product Name" class="w-full p-2 rounded bg-slate-800">
+        <!-- DASHBOARD -->
+        <section id="page-dashboard" class="page-view">
+            <div class="glass border border-slate-800 rounded-[2.8rem] p-6 md:p-8 shadow-2xl">
 
-    <input id="category" placeholder="Category" class="w-full p-2 rounded bg-slate-800">
+                <h1 class="text-4xl md:text-5xl font-black">Dashboard</h1>
+                <p class="text-xs uppercase tracking-[0.3em] text-slate-500 mt-2">Smart Analytics System</p>
 
-    <input id="stock" type="number" placeholder="Stock" class="w-full p-2 rounded bg-slate-800">
+            </div>
+        </section>
 
-    <input id="expiry" type="date" class="w-full p-2 rounded bg-slate-800">
+        <!-- PRODUCTS -->
+        <section id="page-products" class="page-view hidden">
+            <div class="glass border border-slate-800 rounded-[2.8rem] p-6 md:p-8 shadow-2xl">
 
-    <!-- IMAGE UPLOAD -->
-    <input type="file" id="image" accept="image/*" class="w-full">
+                <h1 class="text-4xl md:text-5xl font-black">Products</h1>
 
-    <img id="preview" class="hidden w-full h-40 object-cover rounded">
+                <input id="search-input" oninput="renderProducts()" placeholder="Search product..."
+                    class="w-full mt-6 bg-slate-900 p-4 rounded-2xl border border-slate-800">
 
-    <button onclick="saveProduct()" class="bg-green-500 text-black w-full py-2 rounded font-bold">
-      Save
-    </button>
+                <div id="product-grid" class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6"></div>
 
-    <button onclick="closeModal()" class="w-full py-2 bg-red-500 rounded font-bold">
-      Cancel
-    </button>
+            </div>
+        </section>
 
-  </div>
-</div>
+        <!-- SCANNER -->
+        <section id="page-scanner" class="page-view hidden">
+            <div class="glass border border-slate-800 rounded-[2.8rem] p-8 text-center">
+                <h1 class="text-5xl font-black">AI Scanner</h1>
+                <div id="scanner-container" class="w-full h-64 bg-black mt-6 rounded-2xl"></div>
+            </div>
+        </section>
+
+        <!-- SETTINGS -->
+        <section id="page-settings" class="page-view hidden">
+            <div class="glass border border-slate-800 rounded-[2.8rem] p-6 md:p-8 shadow-2xl">
+                <h1 class="text-4xl font-black">Settings</h1>
+                <button onclick="toggleTheme()" class="mt-6 bg-primary text-black px-5 py-3 rounded-xl font-black">
+                    Toggle Theme
+                </button>
+            </div>
+        </section>
+
+    </section>
+
+</main>
+
+<!-- MOBILE NAV -->
+<nav class="xl:hidden fixed bottom-0 left-0 right-0 glass border-t border-slate-800 h-24 flex justify-around items-center">
+    <button onclick="switchPage('dashboard')">Home</button>
+    <button onclick="switchPage('products')">Products</button>
+    <button onclick="switchPage('scanner')">Scan</button>
+    <button onclick="switchPage('settings')">Settings</button>
+</nav>
+
+<!-- APP -->
+<script src="app.js"></script>
 
 <script>
-let products = JSON.parse(localStorage.getItem("products") || "[]");
-
-// IMAGE PREVIEW
-document.getElementById("image").addEventListener("change", function(e){
-  const file = e.target.files[0];
-  const reader = new FileReader();
-  reader.onload = () => {
-    document.getElementById("preview").src = reader.result;
-    document.getElementById("preview").classList.remove("hidden");
-  }
-  reader.readAsDataURL(file);
-});
-
-// OPEN MODAL
-function openAddProductForm(){
-  document.getElementById("modal").classList.remove("hidden");
-}
-
-// CLOSE MODAL
-function closeModal(){
-  document.getElementById("modal").classList.add("hidden");
-}
-
-// SAVE PRODUCT
-function saveProduct(){
-  const name = document.getElementById("name").value;
-  const category = document.getElementById("category").value;
-  const stock = document.getElementById("stock").value;
-  const expiry = document.getElementById("expiry").value;
-  const image = document.getElementById("preview").src;
-
-  const product = {
-    name,
-    category,
-    stock,
-    expiry,
-    image: image || ""
-  };
-
-  products.push(product);
-  localStorage.setItem("products", JSON.stringify(products));
-
-  closeModal();
-  render();
-}
-
-// RENDER PRODUCTS
-function render(){
-  const grid = document.getElementById("grid");
-  grid.innerHTML = "";
-
-  let low = 0;
-
-  products.forEach(p => {
-    if(Number(p.stock) < 5) low++;
-
-    grid.innerHTML += `
-      <div class="bg-slate-800 p-4 rounded-xl">
-        <img src="${p.image}" class="w-full h-40 object-cover rounded mb-2"/>
-        <h2 class="font-bold">${p.name}</h2>
-        <p>${p.category}</p>
-        <p>Stock: ${p.stock}</p>
-        <p>Expiry: ${p.expiry}</p>
-      </div>
-    `;
-  });
-
-  document.getElementById("total").innerText = products.length;
-  document.getElementById("count").innerText = products.length;
-  document.getElementById("low").innerText = low;
-}
-
-render();
+    document.addEventListener("DOMContentLoaded", () => {
+        lucide.createIcons();
+    });
 </script>
 
 </body>
