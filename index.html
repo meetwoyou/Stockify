@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, visual-viewport-fit=cover">
-    <title>Stockify - Pro Inventory</title>
+    <title>Stockify Pro - Hybrid Inventory</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://unpkg.com/@zxing/library@latest"></script>
@@ -13,256 +13,157 @@
     <script>
         tailwind.config = {
             darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#10b981',
-                        darkBg: '#0f172a'
-                    }
-                }
-            }
+            theme: { extend: { colors: { primary: '#10b981', dark: '#0f172a' } } }
         }
     </script>
     <style>
-        body { background-color: #0f172a; font-family: 'Inter', sans-serif; }
-        .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
-        .active-tab { color: #10b981 !important; }
-        .active-tab i { stroke: #10b981; }
+        body { background-color: #0f172a; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.05); }
+        .nav-active { color: #10b981 !important; transform: scale(1.1); }
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        .scan-line { animation: scan 2s infinite; }
-        @keyframes scan { 0%, 100% { top: 0%; } 50% { top: 100%; } }
+        input, select { background: rgba(15, 23, 42, 0.5) !important; border: 1px solid rgba(255,255,255,0.1) !important; color: white !important; }
     </style>
 </head>
-<body class="text-slate-200 min-h-screen pb-24">
+<body class="text-slate-200">
 
-    <main class="max-w-md mx-auto p-4 space-y-6">
-        
+    <main class="max-w-md mx-auto p-4 pb-28">
         <section id="page-dashboard" class="page-view space-y-6">
             <div class="flex justify-between items-center">
                 <div>
-                    <h1 class="text-2xl font-black tracking-tight text-white">Stockify <span class="text-primary text-sm font-bold">PRO</span></h1>
-                    <p class="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Inventory Overview</p>
+                    <h1 class="text-2xl font-black text-white">Stockify <span class="text-primary text-xs uppercase">Hybrid</span></h1>
+                    <p class="text-[10px] text-slate-500 font-bold tracking-widest uppercase">Real-time Cloud Sync</p>
                 </div>
-                <img src="profile.png" class="w-10 h-10 rounded-full border-2 border-primary shadow-lg shadow-primary/20">
+                <div class="w-10 h-10 rounded-full border-2 border-primary overflow-hidden shadow-lg shadow-primary/20">
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Yash" alt="Profile">
+                </div>
             </div>
 
             <div class="grid grid-cols-2 gap-4">
-                <div class="glass-card p-5 rounded-[2rem]">
-                    <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center mb-3">
-                        <i data-lucide="box" class="w-4 h-4 text-primary"></i>
-                    </div>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase">Total Items</p>
-                    <h3 id="dash-total" class="text-2xl font-black text-white">0</h3>
+                <div class="glass p-5 rounded-[2rem]">
+                    <i data-lucide="package" class="w-5 h-5 text-primary mb-2"></i>
+                    <p class="text-[10px] font-bold text-slate-500 uppercase">Total Items</p>
+                    <h3 id="dash-total" class="text-2xl font-black">0</h3>
                 </div>
-                <div class="glass-card p-5 rounded-[2rem]">
-                    <div class="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center mb-3">
-                        <i data-lucide="layers" class="w-4 h-4 text-amber-500"></i>
-                    </div>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase">Total Pieces</p>
-                    <h3 id="dash-pieces" class="text-2xl font-black text-white">0</h3>
-                </div>
-                <div class="glass-card p-5 rounded-[2rem] col-span-2 flex justify-between items-center">
-                    <div>
-                        <p class="text-[10px] font-bold text-slate-400 uppercase">Expired Items</p>
-                        <h3 id="dash-expired" class="text-2xl font-black text-red-500">0</h3>
-                    </div>
-                    <i data-lucide="alert-circle" class="w-8 h-8 text-red-500/50"></i>
+                <div class="glass p-5 rounded-[2rem]">
+                    <i data-lucide="layers" class="w-5 h-5 text-amber-500 mb-2"></i>
+                    <p class="text-[10px] font-bold text-slate-500 uppercase">Stock Pcs</p>
+                    <h3 id="dash-pieces" class="text-2xl font-black">0</h3>
                 </div>
             </div>
         </section>
 
-        <section id="page-products" class="page-view hidden space-y-6">
+        <section id="page-products" class="page-view hidden space-y-4">
             <div class="flex justify-between items-center">
-                <h2 class="text-xl font-bold">Inventory List</h2>
-                <button onclick="openForm()" class="bg-primary hover:bg-emerald-600 text-white p-3 rounded-2xl shadow-lg shadow-primary/20 transition-transform active:scale-90">
-                    <i data-lucide="plus" class="w-6 h-6"></i>
+                <h2 class="text-xl font-bold">Inventory</h2>
+                <button onclick="openForm()" class="bg-primary p-3 rounded-2xl shadow-lg shadow-primary/20 active:scale-90 transition-transform">
+                    <i data-lucide="plus" class="text-white"></i>
                 </button>
             </div>
-
-            <div class="glass-card flex items-center px-4 py-3 rounded-2xl">
-                <i data-lucide="search" class="w-5 h-5 text-slate-500 mr-3"></i>
-                <input id="search-input" type="text" placeholder="Search by name or SKU..." class="bg-transparent border-none outline-none text-sm w-full text-white">
+            <div class="glass flex items-center px-4 py-3 rounded-2xl">
+                <i data-lucide="search" class="w-5 h-5 text-slate-500 mr-2"></i>
+                <input id="search-input" type="text" placeholder="Search products..." class="bg-transparent border-none outline-none w-full text-sm">
             </div>
-
-            <div id="product-grid" class="grid gap-4">
-                </div>
+            <div id="product-grid" class="space-y-3"></div>
         </section>
 
         <section id="page-scanner" class="page-view hidden space-y-6">
-            <div class="text-center">
-                <h2 class="text-xl font-bold">Instant Scan</h2>
-                <p class="text-xs text-slate-400">পেছনের ক্যামেরা দিয়ে অটো স্ক্যান হবে</p>
-            </div>
-            
-            <div class="relative w-full aspect-square bg-black rounded-[3rem] overflow-hidden border-4 border-primary shadow-2xl shadow-primary/10">
+            <div class="relative w-full aspect-square bg-black rounded-[3rem] overflow-hidden border-4 border-primary">
                 <video id="scan-video" class="w-full h-full object-cover"></video>
-                <div class="absolute inset-x-0 h-1 bg-primary shadow-[0_0_15px_#10b981] scan-line"></div>
-                <div class="absolute inset-0 border-[40px] border-black/40 pointer-events-none"></div>
+                <div class="absolute inset-0 border-[50px] border-black/40 pointer-events-none"></div>
+                <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-32 border-2 border-primary rounded-xl animate-pulse"></div>
             </div>
+            <p class="text-center text-xs text-slate-500 uppercase font-black">Point at barcode for instant sync</p>
         </section>
 
         <section id="page-settings" class="page-view hidden space-y-6">
-            <h2 class="text-xl font-bold">Preferences</h2>
-            <div class="glass-card p-4 rounded-3xl flex items-center justify-between">
-                <div class="flex items-center gap-4">
-                    <div class="w-10 h-10 rounded-2xl bg-slate-800 flex items-center justify-center">
-                        <i data-lucide="moon" class="w-5 h-5 text-primary"></i>
-                    </div>
-                    <span class="font-bold">Dark Interface</span>
-                </div>
-                <div class="w-12 h-6 bg-primary rounded-full relative">
-                    <div class="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
+            <div class="glass p-6 rounded-[2.5rem] text-center border-b-4 border-primary">
+                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=YashKhan" class="w-20 h-20 mx-auto rounded-full bg-slate-800 p-1 mb-4 border-2 border-primary">
+                <h2 class="text-xl font-black">Yash Khan</h2>
+                <p class="text-primary text-xs font-bold uppercase tracking-widest">Lead Developer & Musician</p>
+                <div class="flex justify-center gap-3 mt-4">
+                    <div class="glass p-2 rounded-xl"><i data-lucide="github" class="w-4 h-4"></i></div>
+                    <div class="glass p-2 rounded-xl"><i data-lucide="music" class="w-4 h-4"></i></div>
                 </div>
             </div>
         </section>
-
     </main>
 
-    <div id="form-container" class="fixed inset-0 z-[100] bg-slate-950 hidden overflow-y-auto p-6">
-        <div class="max-w-md mx-auto space-y-8">
-            <div class="flex items-center gap-4">
-                <button onclick="closeForm()" class="p-3 glass-card rounded-2xl text-slate-400">
-                    <i data-lucide="x" class="w-6 h-6"></i>
-                </button>
-                <h2 id="form-title" class="text-xl font-bold text-white">Add New Product</h2>
+    <div id="form-overlay" class="fixed inset-0 z-[100] bg-dark hidden overflow-y-auto p-6">
+        <div class="max-w-md mx-auto space-y-6 pb-10">
+            <div class="flex justify-between items-center">
+                <button onclick="closeForm()" class="glass p-3 rounded-2xl text-slate-400"><i data-lucide="x"></i></button>
+                <h2 id="form-title" class="text-lg font-black uppercase tracking-widest">Entry Form</h2>
+                <div class="w-10"></div>
             </div>
 
-            <form id="product-form" class="space-y-6">
+            <form id="product-form" class="space-y-5">
                 <input type="hidden" id="form-id">
                 
-                <div onclick="document.getElementById('form-image-input').click()" class="h-52 glass-card rounded-[2.5rem] border-2 border-dashed border-white/10 flex items-center justify-center relative overflow-hidden cursor-pointer group">
-                    <img id="form-img-output" class="hidden w-full h-full object-cover">
-                    <div id="image-placeholder" class="text-center group-hover:scale-110 transition-transform">
-                        <i data-lucide="camera" class="w-10 h-10 text-primary mx-auto"></i>
-                        <p class="text-[10px] font-black mt-2 text-slate-400 uppercase">Upload Product Photo</p>
+                <div onclick="document.getElementById('file-input').click()" class="h-48 glass rounded-[2rem] border-2 border-dashed border-white/10 flex items-center justify-center overflow-hidden relative cursor-pointer">
+                    <img id="img-preview" class="hidden w-full h-full object-cover">
+                    <div id="img-placeholder" class="text-center">
+                        <i data-lucide="camera" class="w-8 h-8 text-primary mx-auto"></i>
+                        <p class="text-[10px] font-bold mt-2 text-slate-500">UPLOAD PHOTO</p>
                     </div>
-                    <input type="file" id="form-image-input" class="hidden" accept="image/*">
+                    <input type="file" id="file-input" class="hidden" accept="image/*">
                 </div>
 
                 <div class="space-y-4">
-                    <div class="space-y-1">
-                        <label class="text-[10px] font-black text-slate-500 uppercase ml-2">Product Details</label>
-                        <input type="text" id="form-name" placeholder="Item Name" class="w-full bg-slate-900/50 p-4 rounded-2xl border border-white/5 outline-none focus:ring-2 ring-primary transition-all font-bold">
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <input type="text" id="form-sku" placeholder="SKU / Barcode" class="bg-slate-900/50 p-4 rounded-2xl border border-white/5 outline-none focus:ring-2 ring-primary font-mono text-sm">
-                        <select id="form-category" class="bg-slate-900/50 p-4 rounded-2xl border border-white/5 outline-none focus:ring-2 ring-primary font-bold text-sm text-slate-300">
-                            <option value="Grains">Grains</option>
-                            <option value="Dairy">Dairy</option>
-                            <option value="Beverages" selected>Beverages</option>
+                    <input type="text" id="p-name" placeholder="Product Name" required class="w-full p-4 rounded-2xl outline-none focus:ring-2 ring-primary transition-all font-bold">
+                    <div class="grid grid-cols-2 gap-3">
+                        <input type="text" id="p-sku" placeholder="SKU/Barcode" required class="p-4 rounded-2xl outline-none font-mono text-sm">
+                        <select id="p-cat" class="p-4 rounded-2xl outline-none font-bold text-xs">
+                            <option value="Beverages">Beverages</option>
                             <option value="Snacks">Snacks</option>
+                            <option value="Dairy">Dairy</option>
                             <option value="Toiletries">Toiletries</option>
                         </select>
                     </div>
-
+                    
                     <div class="grid grid-cols-3 gap-2 bg-primary/5 p-4 rounded-3xl border border-primary/10">
                         <div class="text-center">
                             <label class="text-[8px] font-black text-slate-500 uppercase">Cartons</label>
-                            <input type="number" id="form-cartons" value="1" class="bg-transparent w-full text-center font-black text-lg outline-none text-white">
+                            <input type="number" id="p-ctn" value="1" class="bg-transparent w-full text-center font-black text-lg outline-none">
                         </div>
                         <div class="text-center">
                             <label class="text-[8px] font-black text-slate-500 uppercase">Pcs/Ctn</label>
-                            <input type="number" id="form-pcs-per" value="24" class="bg-transparent w-full text-center font-black text-lg outline-none text-white">
+                            <input type="number" id="p-pcs-ctn" value="24" class="bg-transparent w-full text-center font-black text-lg outline-none">
                         </div>
                         <div class="text-center border-l border-white/10">
-                            <label class="text-[8px] font-black text-primary uppercase tracking-tighter">Total Pcs</label>
-                            <input type="number" id="form-total-pcs" readonly class="bg-transparent w-full text-center font-black text-lg text-primary outline-none">
+                            <label class="text-[8px] font-black text-primary uppercase">Total Pcs</label>
+                            <input type="number" id="p-total" readonly class="bg-transparent w-full text-center font-black text-lg text-primary outline-none">
                         </div>
                     </div>
 
-                    <div class="space-y-1">
-                        <label class="text-[10px] font-black text-slate-500 uppercase ml-2">Expiry Date</label>
-                        <input type="date" id="form-expiry" class="w-full bg-slate-900/50 p-4 rounded-2xl border border-white/5 outline-none focus:ring-2 ring-primary text-white font-bold">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-bold text-slate-500 ml-2">CTN PRICE (SAR)</label>
+                            <input type="number" step="0.01" id="p-price-ctn" placeholder="0.00" class="w-full p-4 rounded-2xl outline-none font-bold">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-bold text-slate-500 ml-2">PCS PRICE (SAR)</label>
+                            <input type="number" step="0.01" id="p-price-pcs" placeholder="0.00" class="w-full p-4 rounded-2xl outline-none font-bold">
+                        </div>
                     </div>
+
+                    <input type="date" id="p-expiry" required class="w-full p-4 rounded-2xl outline-none font-bold uppercase text-xs">
                 </div>
 
-                <button type="submit" id="save-btn" class="w-full bg-primary py-5 rounded-3xl font-black text-white shadow-xl shadow-primary/20 hover:bg-emerald-600 transition-all active:scale-95">
-                    SYNC TO CLOUD
+                <button type="submit" id="save-btn" class="w-full bg-primary py-5 rounded-[2rem] font-black text-white shadow-xl shadow-primary/20 active:scale-95 transition-all">
+                    SYNC TO CLOUD & LOCAL
                 </button>
             </form>
         </div>
     </div>
 
-    <nav class="fixed bottom-0 left-0 right-0 h-20 glass-card border-t-0 flex justify-around items-center rounded-t-[2.5rem] z-50">
-        <button onclick="switchPage('dashboard')" class="nav-btn active-tab flex flex-col items-center gap-1">
-            <i data-lucide="layout-grid" class="w-6 h-6"></i>
-        </button>
-        <button onclick="switchPage('products')" class="nav-btn flex flex-col items-center gap-1 text-slate-500">
-            <i data-lucide="box" class="w-6 h-6"></i>
-        </button>
-        <div class="relative -top-8">
-            <button onclick="switchPage('scanner')" class="w-16 h-16 bg-primary rounded-full flex items-center justify-center shadow-xl shadow-primary/30 border-4 border-slate-950 active:scale-90 transition-transform">
-                <i data-lucide="scan" class="w-8 h-8 text-white"></i>
-            </button>
-        </div>
-        <button onclick="switchPage('settings')" class="nav-btn flex flex-col items-center gap-1 text-slate-500">
-            <i data-lucide="settings-2" class="w-6 h-6"></i>
-        </button>
+    <nav class="fixed bottom-0 left-0 right-0 h-20 glass border-t-0 flex justify-around items-center rounded-t-[2.5rem] z-50 px-6">
+        <button onclick="switchPage('dashboard')" class="nav-btn nav-active" data-id="dashboard"><i data-lucide="layout-dashboard"></i></button>
+        <button onclick="switchPage('products')" class="nav-btn" data-id="products"><i data-lucide="box"></i></button>
+        <button onclick="switchPage('scanner')" class="w-14 h-14 bg-primary rounded-full flex items-center justify-center -top-8 relative border-4 border-dark shadow-xl shadow-primary/30 active:scale-90 transition-transform"><i data-lucide="scan" class="text-white"></i></button>
+        <button onclick="switchPage('settings')" class="nav-btn" data-id="settings"><i data-lucide="user"></i></button>
     </nav>
 
-    <script>
-        let codeReader = null;
-
-        window.switchPage = (pageId) => {
-            document.querySelectorAll('.page-view').forEach(p => p.classList.add('hidden'));
-            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active-tab'));
-            
-            document.getElementById(`page-${pageId}`).classList.remove('hidden');
-            
-            // Scanner logic
-            if(pageId === 'scanner') {
-                startScanner();
-            } else {
-                stopScanner();
-            }
-            
-            lucide.createIcons();
-        };
-
-        async function startScanner() {
-            codeReader = new ZXing.BrowserMultiFormatReader();
-            const devices = await codeReader.listVideoInputDevices();
-            // সব সময় পেছনের ক্যামেরা খোঁজা
-            const backCam = devices.find(d => d.label.toLowerCase().includes('back')) || devices[devices.length - 1];
-            
-            codeReader.decodeFromVideoDevice(backCam.deviceId, 'scan-video', (result) => {
-                if(result) {
-                    if(navigator.vibrate) navigator.vibrate(100);
-                    // স্ক্যান রেজাল্ট দিয়ে সার্চ করা বা অন্য কিছু
-                    document.getElementById('search-input').value = result.text;
-                    switchPage('products');
-                }
-            });
-        }
-
-        function stopScanner() { if(codeReader) codeReader.reset(); }
-
-        window.openForm = () => {
-            document.getElementById('form-container').classList.remove('hidden');
-            document.getElementById('form-title').innerText = "Add New Product";
-            document.getElementById('product-form').reset();
-            document.getElementById('form-id').value = "";
-            document.getElementById('form-img-output').classList.add('hidden');
-            document.getElementById('image-placeholder').classList.remove('hidden');
-        };
-
-        window.closeForm = () => { document.getElementById('form-container').classList.add('hidden'); };
-
-        // Auto Calc
-        const ctn = document.getElementById('form-cartons');
-        const pcs = document.getElementById('form-pcs-per');
-        const total = document.getElementById('form-total-pcs');
-
-        [ctn, pcs].forEach(el => {
-            el.addEventListener('input', () => {
-                total.value = (parseInt(ctn.value) || 0) * (parseInt(pcs.value) || 0);
-            });
-        });
-
-        lucide.createIcons();
-    </script>
-    
     <script src="app.js"></script>
+    <script>lucide.createIcons();</script>
 </body>
 </html>
